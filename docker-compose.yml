@@ -1,0 +1,10 @@
+version: "3"
+services:
+  pong-ui:
+    container_name: pong-ui
+    restart: unless-stopped
+    build:
+      context: pong-ui/
+    image: pong-ui
+    ports:
+      - 3000:3000
