@@ -6,6 +6,8 @@ WORKDIR /app
 
 RUN npm install
 
-EXPOSE 3000
+COPY . .
+
+EXPOSE ${FRONTEND_PORT}
 
 CMD ["npm", "run", "dev"]
