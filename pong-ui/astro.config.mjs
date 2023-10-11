@@ -1,9 +1,11 @@
-import { defineConfig } from 'astro/config';
+import { defineConfig } from "astro/config"
+import dotenv from "dotenv"
 
-import react from "@astrojs/react";
+import react from "@astrojs/react"
+dotenv.config({ path: "./.env" })
 
 // https://astro.build/config
 export default defineConfig({
   integrations: [react()],
-  server: { port: 3000, host: true },
-});
+  server: { port: parseInt(process.env.FRONTEND_PORT), host: true },
+})

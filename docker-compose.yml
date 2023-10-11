@@ -6,7 +6,23 @@ services:
     build:
       context: pong-ui/
     image: pong-ui
+    env_file:
+      - .env
+    depends_on:
+      - pong-server
     ports:
-      - 3000:3000
+      - $FRONTEND_PORT:$FRONTEND_PORT
     volumes:
       - ./pong-ui/src:/app/src
+  pong-server:
+    container_name: pong-server
+    restart: unless-stopped
+    build:
+      context: pong-server/
+    image: pong-server
+    env_file:
+      - .env
+    ports:
+      - $PUBLIC_BACKEND_PORT:$PUBLIC_BACKEND_PORT
+    volumes:
+      - ./pong-server/src:/app/src
