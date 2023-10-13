@@ -6,7 +6,7 @@ const Game = () => {
   useEffect(() => {
     async function initPhaser() {
         const Phaser = await import('phaser');
-        const { default:HelloWorldScene } = await import('./Scene');;
+        const { default:GameScene } = await import('./GameScene');;
 
         const config = {
           type: Phaser.AUTO,
@@ -16,14 +16,14 @@ const Game = () => {
           physics: {
             default: 'arcade',
             arcade: {
-              gravity: { y: 200 },
+              gravity: { y: 0, x: 0 },
             },
           }
         }
 
         let game = new Phaser.Game({
             ...config,
-            scene: [HelloWorldScene]
+            scene: [GameScene]
         });
 
         setPhaser(game);
