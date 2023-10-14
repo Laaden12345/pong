@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react"
+import Game from "../game/Game"
 
 const App = () => {
   const [message, setMessage] = useState("Loading...")
@@ -12,7 +13,7 @@ const App = () => {
     fetchMessage()
   })
 
-  return <h1>Server says: {message}</h1>
+  return <Game />
 }
 
 export default App
