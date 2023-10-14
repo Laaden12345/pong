@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import Game from '../game/Game'
+import Game from "../game/Game"
 
 const App = () => {
   const [message, setMessage] = useState("Loading...")
