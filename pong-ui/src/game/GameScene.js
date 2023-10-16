@@ -196,12 +196,12 @@ export default class GameScene extends Phaser.Scene {
     if (side == 1) {
       this.ball.body.velocity.y = ballVy
       this.ball.body.velocity.x = ballVx
+      this.ball.onLeftPaddle = false
     } else {
       this.ball.body.velocity.y = ballVy
       this.ball.body.velocity.x = -ballVx
+      this.ball.onRightPaddle = false
     }
-
-    this.ball.onLeftPaddle = false
   }
 
   calculateXCollisions(paddle, side) {
@@ -209,7 +209,7 @@ export default class GameScene extends Phaser.Scene {
     const relativeIntersectX = paddle.x - this.ball.x
     //Normalize the relativeIntersectX value
     const normalizedRelativeIntersectionX =
-      relativeIntersectX / (paddle.displayHeight / 2)
+      relativeIntersectX / (paddle.displayWidth / 2)
     //Calculate the bounce angle (maximum 45 degrees)
     const bounceAngle = (normalizedRelativeIntersectionX * Math.PI) / 4
     //Calculate the y-velocity of the ball
@@ -220,12 +220,12 @@ export default class GameScene extends Phaser.Scene {
     if (side == 1) {
       this.ball.body.velocity.y = ballVy
       this.ball.body.velocity.x = ballVx
+      this.ball.onTopPaddle = false
     } else {
       this.ball.body.velocity.y = -ballVy
       this.ball.body.velocity.x = ballVx
+      this.ball.onBottomPaddle = false
     }
-
-    this.ball.onLeftPaddle = false
   }
   //Helper function for itializing paddles
   initializePaddle(paddle, axis) {
