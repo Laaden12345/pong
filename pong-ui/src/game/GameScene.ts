@@ -2,6 +2,8 @@ import Phaser from "phaser"
 import playerConfig from "./playerConfig"
 
 export default class GameScene extends Phaser.Scene {
+  private WIDTH: number = 800
+  private HEIGHT: number = 800
   private wasd: any
   private playerKeys: any
   private ball: any
@@ -9,6 +11,8 @@ export default class GameScene extends Phaser.Scene {
   private ballVelocity: number
   private backendUrl: string
   private players: any[]
+  private posts: any[]
+  private scores: any[]
 
   constructor() {
     super("hello-world")
@@ -20,12 +24,15 @@ export default class GameScene extends Phaser.Scene {
     this.load.image("wall", "https://i.imgur.com/WQUKFVC.png")
     this.load.image("wall2", "https://i.imgur.com/YD8kW9f.png")
     this.load.image("ball", "https://i.imgur.com/xtFdsIU.png")
+    this.load.image("post", "https://i.imgur.com/9LJC7V8.png")
 
     this.velocity = 800
     this.ballVelocity = 400
 
     this.backendUrl = `http://localhost:${import.meta.env.PUBLIC_BACKEND_PORT}`
     this.players = []
+    this.posts = []
+    this.scores = []
   }
 
   create() {
@@ -52,12 +59,27 @@ export default class GameScene extends Phaser.Scene {
     this.ball.onPlayerTwoPaddle = false
     this.ball.onPlayerThreePaddle = false
     this.ball.onPlayerFourPaddle = false
+
+    this.posts[0] = this.add.sprite(0,0, "post")
+    this.posts[1] = this.add.sprite(this.WIDTH,0, "post")
+    this.posts[2] = this.add.sprite(0, this.HEIGHT, "post")
+    this.posts[3] = this.add.sprite(this.WIDTH, this.HEIGHT, "post")
+
+    for (let i = 0; i < this.posts.length; i++) {
+      this.physics.world.enable(this.posts[i])
+      this.posts[i].setScale(2)
+      this.posts[i].body!.setBounce(1)
+      this.posts[i].body!.immovable = true
+      this.physics.add.collider(this.ball, this.posts[i])
+    }
+
   }
 
   update() {
     this.checkPlayers()
     this.players.forEach((player, i) => {
       this.movePaddle(i as keyof typeof playerConfig)
+      this.updateScorePosition(i as keyof typeof playerConfig)
     })
     this.ballCollision()
 
@@ -86,12 +108,15 @@ export default class GameScene extends Phaser.Scene {
         ? this.add.sprite(config.spawn.x, config.spawn.y, "wall")
         : this.add.sprite(config.spawn.x, config.spawn.y, "wall2")
     player.setOrigin(0.5, 0.5)
+    const hitpoints: any = this.add.text(config.spawn.x-20, config.spawn.y-20, config.hp.toString(),{font: "16px Arial", color: "#000000", align: "center"})
+    
     config.direction === "y" ? (player.scaleY = 0.33) : (player.scaleX = 0.33)
     this.physics.world.enable(player)
     player.body!.collideWorldBounds = true
     player.body!.immovable = true
-
+    
     this.players.push(player)
+    this.scores.push(hitpoints)
   }
 
   async getConnectionType() {
@@ -131,6 +156,16 @@ export default class GameScene extends Phaser.Scene {
         player.body.velocity.y = 0
       }
     }
+  }
+
+  updateScorePosition(playerNo: keyof typeof playerConfig) {
+    if (!this.players[playerNo]) {
+      return
+    }
+    const player = this.players[playerNo]
+    const score = this.scores[playerNo]
+
+    score.setPosition(player.x-10, player.y-10)
   }
 
   //Function to check paddle and ball collisions
