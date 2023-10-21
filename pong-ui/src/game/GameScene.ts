@@ -12,7 +12,10 @@ export default class GameScene extends Phaser.Scene {
   private backendUrl: string
   private players: any[]
   private posts: any[]
+  //Phaser text elements which are rendered
   private scores: any[]
+  //array of numbers from where the text elements fetch the scores
+  private scoreNumbers: number[]
 
   constructor() {
     super("hello-world")
@@ -33,6 +36,7 @@ export default class GameScene extends Phaser.Scene {
     this.players = []
     this.posts = []
     this.scores = []
+    this.scoreNumbers = [10,10,10,10]
   }
 
   create() {
@@ -54,7 +58,7 @@ export default class GameScene extends Phaser.Scene {
     this.physics.world.enable(this.ball)
     this.ball.body!.velocity.set(this.ballVelocity, 0)
     this.ball.body!.setBounce(1)
-    this.ball.body!.collideWorldBounds = true
+    this.ball.body!.collideWorldBounds = false
     this.ball.onPlayerOnePaddle = false
     this.ball.onPlayerTwoPaddle = false
     this.ball.onPlayerThreePaddle = false
@@ -99,16 +103,43 @@ export default class GameScene extends Phaser.Scene {
       this.increaseBallSpeed()
       this.calculateYCollisions(this.players[3], -1)
     }
+
+    if(this.ball.x >= this.WIDTH){
+      this.ballLost()
+      if(this.players.length === 4){
+        this.scoreNumbers[3] -= 1
+      }
+    } else if(this.ball.x <= 0){
+      this.ballLost()
+      if(this.players.length === 4){
+        this.scoreNumbers[1] -= 1
+      }
+    } else if(this.ball.y <= 0){
+      this.ballLost()
+      if(this.players.length === 4){
+        this.scoreNumbers[0] -= 1
+      }
+    } else if(this.ball.y >= this.HEIGHT){
+      this.ballLost()
+      if(this.players.length === 4){
+        this.scoreNumbers[2] -= 1
+      }
+    }
+
+    if(this.players.length === 4){
+      this.updateScores()
+    }
   }
 
   addplayer(playerNo: keyof typeof playerConfig) {
     const config = playerConfig[playerNo]
+    this.scoreNumbers[playerNo] = config.hp
     const player: any =
       config.direction === "y"
         ? this.add.sprite(config.spawn.x, config.spawn.y, "wall")
         : this.add.sprite(config.spawn.x, config.spawn.y, "wall2")
     player.setOrigin(0.5, 0.5)
-    const hitpoints: any = this.add.text(config.spawn.x-20, config.spawn.y-20, config.hp.toString(),{font: "16px Arial", color: "#000000", align: "center"})
+    const hitpoints: any = this.add.text(config.spawn.x-10, config.spawn.y-10, this.scoreNumbers[playerNo].toString(),{font: "16px Arial", color: "#000000", align: "center"})
     
     config.direction === "y" ? (player.scaleY = 0.33) : (player.scaleX = 0.33)
     this.physics.world.enable(player)
@@ -166,6 +197,7 @@ export default class GameScene extends Phaser.Scene {
     const score = this.scores[playerNo]
 
     score.setPosition(player.x-10, player.y-10)
+    
   }
 
   //Function to check paddle and ball collisions
@@ -246,5 +278,16 @@ export default class GameScene extends Phaser.Scene {
     if (this.ballVelocity < 1200) {
       this.ballVelocity += 100
     }
+  }
+
+  updateScores(){
+    for (let i = 0; i < this.scores.length; i++) {
+      this.scores[i].setText(this.scoreNumbers[i].toString())
+  }
+}
+
+  ballLost(){
+    this.ball.body!.reset(400,300)
+    this.ball.body!.velocity.set(400, 0)
   }
 }
