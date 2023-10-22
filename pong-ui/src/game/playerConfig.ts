@@ -3,6 +3,7 @@ export default {
     direction: "x",
     right: 1,
     left: -1,
+    hp: 10,
     spawn: {
       x: 400,
       y: 50,
@@ -12,6 +13,7 @@ export default {
     direction: "y",
     right: -1,
     left: 1,
+    hp: 10,
     spawn: {
       x: 50,
       y: 400,
@@ -21,6 +23,7 @@ export default {
     direction: "x",
     right: -1,
     left: 1,
+    hp: 10,
     spawn: {
       x: 400,
       y: 750,
@@ -30,6 +33,7 @@ export default {
     direction: "y",
     right: 1,
     left: -1,
+    hp: 10,
     spawn: {
       x: 750,
       y: 400,
