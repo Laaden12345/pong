@@ -36,7 +36,7 @@ export default class GameScene extends Phaser.Scene {
     this.players = []
     this.posts = []
     this.scores = []
-    this.scoreNumbers = [10,10,10,10]
+    this.scoreNumbers = [10, 10, 10, 10]
   }
 
   create() {
@@ -56,7 +56,10 @@ export default class GameScene extends Phaser.Scene {
 
     this.ball = this.add.sprite(400, 300, "ball")
     this.physics.world.enable(this.ball)
-    this.ball.body!.velocity.set(this.ballVelocity, (Math.random()*2 - 1)*400)
+    this.ball.body!.velocity.set(
+      this.ballVelocity,
+      (Math.random() * 2 - 1) * 400
+    )
     this.ball.body!.setBounce(1)
     this.ball.body!.collideWorldBounds = false
     this.ball.onPlayerOnePaddle = false
@@ -64,8 +67,8 @@ export default class GameScene extends Phaser.Scene {
     this.ball.onPlayerThreePaddle = false
     this.ball.onPlayerFourPaddle = false
 
-    this.posts[0] = this.add.sprite(0,0, "post")
-    this.posts[1] = this.add.sprite(this.WIDTH,0, "post")
+    this.posts[0] = this.add.sprite(0, 0, "post")
+    this.posts[1] = this.add.sprite(this.WIDTH, 0, "post")
     this.posts[2] = this.add.sprite(0, this.HEIGHT, "post")
     this.posts[3] = this.add.sprite(this.WIDTH, this.HEIGHT, "post")
 
@@ -76,13 +79,12 @@ export default class GameScene extends Phaser.Scene {
       this.posts[i].body!.immovable = true
       this.physics.add.collider(this.ball, this.posts[i])
     }
-
   }
 
   update() {
     this.checkPlayers()
     this.players.forEach((player, i) => {
-      if(this.scoreNumbers[i] > 0){
+      if (this.scoreNumbers[i] > 0) {
         this.movePaddle(i as keyof typeof playerConfig)
         this.updateScorePosition(i as keyof typeof playerConfig)
       }
@@ -108,41 +110,41 @@ export default class GameScene extends Phaser.Scene {
     }
 
     //check if ball out of play, change scores
-    if(this.ball.x > this.WIDTH+25){
+    if (this.ball.x > this.WIDTH + 25) {
       this.ballLost()
-      if(this.players.length === 4){
+      if (this.players.length === 4) {
         this.scoreNumbers[3] -= 1
-        if(this.scoreNumbers[3] == 0){
+        if (this.scoreNumbers[3] == 0) {
           this.replacePlayerWithWall(3)
         }
       }
-    } else if(this.ball.x < -25){
+    } else if (this.ball.x < -25) {
       this.ballLost()
-      if(this.players.length === 4){
+      if (this.players.length === 4) {
         this.scoreNumbers[1] -= 1
-        if(this.scoreNumbers[1] == 0){
+        if (this.scoreNumbers[1] == 0) {
           this.replacePlayerWithWall(1)
         }
       }
-    } else if(this.ball.y < -25){
+    } else if (this.ball.y < -25) {
       this.ballLost()
-      if(this.players.length === 4){
+      if (this.players.length === 4) {
         this.scoreNumbers[0] -= 1
-        if(this.scoreNumbers[0] == 0){
+        if (this.scoreNumbers[0] == 0) {
           this.replacePlayerWithWall(0)
         }
       }
-    } else if(this.ball.y > this.HEIGHT+25){
+    } else if (this.ball.y > this.HEIGHT + 25) {
       this.ballLost()
-      if(this.players.length === 4){
+      if (this.players.length === 4) {
         this.scoreNumbers[2] -= 1
-        if(this.scoreNumbers[2] == 0){
+        if (this.scoreNumbers[2] == 0) {
           this.replacePlayerWithWall(2)
         }
       }
     }
 
-    if(this.players.length === 4){
+    if (this.players.length === 4) {
       this.updateScores()
     }
   }
@@ -155,13 +157,18 @@ export default class GameScene extends Phaser.Scene {
         ? this.add.sprite(config.spawn.x, config.spawn.y, "wall")
         : this.add.sprite(config.spawn.x, config.spawn.y, "wall2")
     player.setOrigin(0.5, 0.5)
-    const hitpoints: any = this.add.text(config.spawn.x-10, config.spawn.y-10, this.scoreNumbers[playerNo].toString(),{font: "16px Arial", color: "#000000", align: "center"})
-    
+    const hitpoints: any = this.add.text(
+      config.spawn.x - 10,
+      config.spawn.y - 10,
+      this.scoreNumbers[playerNo].toString(),
+      { font: "16px Arial", color: "#000000", align: "center" }
+    )
+
     config.direction === "y" ? (player.scaleY = 0.33) : (player.scaleX = 0.33)
     this.physics.world.enable(player)
     player.body!.collideWorldBounds = true
     player.body!.immovable = true
-    
+
     this.players.push(player)
     this.scores.push(hitpoints)
   }
@@ -212,15 +219,14 @@ export default class GameScene extends Phaser.Scene {
     const player = this.players[playerNo]
     const score = this.scores[playerNo]
 
-    score.setPosition(player.x-10, player.y-10)
-    
+    score.setPosition(player.x - 10, player.y - 10)
   }
 
   //Function to check paddle and ball collisions
   ballCollision() {
     this.players.forEach((player, i) => {
       i as keyof typeof playerConfig
-      if (i === 0 && this.scoreNumbers[0] > 0 ) {
+      if (i === 0 && this.scoreNumbers[0] > 0) {
         this.ball.onPlayerOnePaddle = false
         this.physics.collide(this.players[0], this.ball, () => {
           this.ball.onPlayerOnePaddle = true
@@ -296,54 +302,56 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  updateScores(){
+  updateScores() {
     for (let i = 0; i < this.scores.length; i++) {
       this.scores[i].setText(this.scoreNumbers[i].toString())
-  }
-}
-
-  ballLost(){
-    this.ball.body!.reset(400,300)
-    this.ball.body!.velocity.set(400, (Math.random()*2 - 1)*400)
+    }
   }
 
-  replacePlayerWithWall(playerNo: keyof typeof playerConfig){
+  ballLost() {
+    this.ball.body!.reset(400, 300)
+    this.ball.body!.velocity.set(400, (Math.random() * 2 - 1) * 400)
+  }
+
+  replacePlayerWithWall(playerNo: keyof typeof playerConfig) {
     const config = playerConfig[playerNo]
-    
-    const solidWall: any = this.getWall(config.spawn.x, config.spawn.y, config.direction)
-    
+
+    const solidWall: any = this.getWall(
+      config.spawn.x,
+      config.spawn.y,
+      config.direction
+    )
+
     this.physics.world.enable(solidWall)
     solidWall.body!.collideWorldBounds = true
     solidWall.body!.immovable = true
-    
+
     this.players[playerNo].destroy(true)
     this.players[playerNo] = solidWall
     this.physics.add.collider(this.ball, this.players[playerNo])
   }
 
-  getWall(x:number, y:number, configDir:string){
-    if(configDir === "y"){
-      if(x < this.WIDTH/2){
-        const wall = this.add.sprite(0,0,"wall")
+  getWall(x: number, y: number, configDir: string) {
+    if (configDir === "y") {
+      if (x < this.WIDTH / 2) {
+        const wall = this.add.sprite(0, 0, "wall")
         wall.displayHeight = this.HEIGHT
         return wall
       } else {
-        const wall = this.add.sprite(this.WIDTH,0,"wall")
+        const wall = this.add.sprite(this.WIDTH, 0, "wall")
         wall.displayHeight = this.HEIGHT
         return wall
       }
     } else {
-      if(y < this.HEIGHT/2){
-        const wall = this.add.sprite(0,0,"wall2")
+      if (y < this.HEIGHT / 2) {
+        const wall = this.add.sprite(0, 0, "wall2")
         wall.displayWidth = this.WIDTH
         return wall
-      }else{
-        const wall =  this.add.sprite(0,this.HEIGHT,"wall2")
+      } else {
+        const wall = this.add.sprite(0, this.HEIGHT, "wall2")
         wall.displayWidth = this.WIDTH
         return wall
       }
     }
   }
-
- 
 }
