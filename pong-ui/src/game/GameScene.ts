@@ -56,7 +56,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.ball = this.add.sprite(400, 300, "ball")
     this.physics.world.enable(this.ball)
-    this.ball.body!.velocity.set(this.ballVelocity, 0)
+    this.ball.body!.velocity.set(this.ballVelocity, (Math.random()*2 - 1)*400)
     this.ball.body!.setBounce(1)
     this.ball.body!.collideWorldBounds = false
     this.ball.onPlayerOnePaddle = false
@@ -82,11 +82,14 @@ export default class GameScene extends Phaser.Scene {
   update() {
     this.checkPlayers()
     this.players.forEach((player, i) => {
-      this.movePaddle(i as keyof typeof playerConfig)
-      this.updateScorePosition(i as keyof typeof playerConfig)
+      if(this.scoreNumbers[i] > 0){
+        this.movePaddle(i as keyof typeof playerConfig)
+        this.updateScorePosition(i as keyof typeof playerConfig)
+      }
     })
     this.ballCollision()
 
+    //Dont apply these to the walls which replace lost players
     if (this.ball.onPlayerOnePaddle) {
       this.increaseBallSpeed()
       this.calculateXCollisions(this.players[0], 1)
@@ -104,25 +107,38 @@ export default class GameScene extends Phaser.Scene {
       this.calculateYCollisions(this.players[3], -1)
     }
 
-    if(this.ball.x >= this.WIDTH){
+    //check if ball out of play, change scores
+    if(this.ball.x > this.WIDTH+25){
       this.ballLost()
       if(this.players.length === 4){
         this.scoreNumbers[3] -= 1
+        if(this.scoreNumbers[3] == 0){
+          this.replacePlayerWithWall(3)
+        }
       }
-    } else if(this.ball.x <= 0){
+    } else if(this.ball.x < -25){
       this.ballLost()
       if(this.players.length === 4){
         this.scoreNumbers[1] -= 1
+        if(this.scoreNumbers[1] == 0){
+          this.replacePlayerWithWall(1)
+        }
       }
-    } else if(this.ball.y <= 0){
+    } else if(this.ball.y < -25){
       this.ballLost()
       if(this.players.length === 4){
         this.scoreNumbers[0] -= 1
+        if(this.scoreNumbers[0] == 0){
+          this.replacePlayerWithWall(0)
+        }
       }
-    } else if(this.ball.y >= this.HEIGHT){
+    } else if(this.ball.y > this.HEIGHT+25){
       this.ballLost()
       if(this.players.length === 4){
         this.scoreNumbers[2] -= 1
+        if(this.scoreNumbers[2] == 0){
+          this.replacePlayerWithWall(2)
+        }
       }
     }
 
@@ -204,25 +220,25 @@ export default class GameScene extends Phaser.Scene {
   ballCollision() {
     this.players.forEach((player, i) => {
       i as keyof typeof playerConfig
-      if (i === 0) {
+      if (i === 0 && this.scoreNumbers[0] > 0 ) {
         this.ball.onPlayerOnePaddle = false
         this.physics.collide(this.players[0], this.ball, () => {
           this.ball.onPlayerOnePaddle = true
         })
       }
-      if (i === 1) {
+      if (i === 1 && this.scoreNumbers[1] > 0) {
         this.ball.onPlayerTwoPaddle = false
         this.physics.collide(this.players[1], this.ball, () => {
           this.ball.onPlayerTwoPaddle = true
         })
       }
-      if (i === 2) {
+      if (i === 2 && this.scoreNumbers[2] > 0) {
         this.ball.onPlayerThreePaddle = false
         this.physics.collide(this.players[2], this.ball, () => {
           this.ball.onPlayerThreePaddle = true
         })
       }
-      if (i === 3) {
+      if (i === 3 && this.scoreNumbers[3] > 0) {
         this.ball.onPlayerFourPaddle = false
         this.physics.collide(this.players[3], this.ball, () => {
           this.ball.onPlayerFourPaddle = true
@@ -288,6 +304,46 @@ export default class GameScene extends Phaser.Scene {
 
   ballLost(){
     this.ball.body!.reset(400,300)
-    this.ball.body!.velocity.set(400, 0)
+    this.ball.body!.velocity.set(400, (Math.random()*2 - 1)*400)
   }
+
+  replacePlayerWithWall(playerNo: keyof typeof playerConfig){
+    const config = playerConfig[playerNo]
+    
+    const solidWall: any = this.getWall(config.spawn.x, config.spawn.y, config.direction)
+    
+    this.physics.world.enable(solidWall)
+    solidWall.body!.collideWorldBounds = true
+    solidWall.body!.immovable = true
+    
+    this.players[playerNo].destroy(true)
+    this.players[playerNo] = solidWall
+    this.physics.add.collider(this.ball, this.players[playerNo])
+  }
+
+  getWall(x:number, y:number, configDir:string){
+    if(configDir === "y"){
+      if(x < this.WIDTH/2){
+        const wall = this.add.sprite(0,0,"wall")
+        wall.displayHeight = this.HEIGHT
+        return wall
+      } else {
+        const wall = this.add.sprite(this.WIDTH,0,"wall")
+        wall.displayHeight = this.HEIGHT
+        return wall
+      }
+    } else {
+      if(y < this.HEIGHT/2){
+        const wall = this.add.sprite(0,0,"wall2")
+        wall.displayWidth = this.WIDTH
+        return wall
+      }else{
+        const wall =  this.add.sprite(0,this.HEIGHT,"wall2")
+        wall.displayWidth = this.WIDTH
+        return wall
+      }
+    }
+  }
+
+ 
 }
