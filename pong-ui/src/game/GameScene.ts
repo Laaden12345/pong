@@ -1,7 +1,9 @@
 import Phaser from "phaser"
+import { v4 as uuidv4 } from "uuid"
 import playerConfig from "./playerConfig"
 
 export default class GameScene extends Phaser.Scene {
+  private clientId: string
   private WIDTH: number = 800
   private HEIGHT: number = 800
   private wasd: any
@@ -16,6 +18,10 @@ export default class GameScene extends Phaser.Scene {
   private scores: any[]
   //array of numbers from where the text elements fetch the scores
   private scoreNumbers: number[]
+  private controlledPlayer: any
+  private socket: WebSocket
+  private joining: boolean
+  playerNo: number
 
   constructor() {
     super("hello-world")
@@ -29,6 +35,8 @@ export default class GameScene extends Phaser.Scene {
     this.load.image("ball", "https://i.imgur.com/xtFdsIU.png")
     this.load.image("post", "https://i.imgur.com/9LJC7V8.png")
 
+    this.clientId = uuidv4()
+
     this.velocity = 800
     this.ballVelocity = 400
 
@@ -37,6 +45,11 @@ export default class GameScene extends Phaser.Scene {
     this.posts = []
     this.scores = []
     this.scoreNumbers = [10, 10, 10, 10]
+    this.controlledPlayer = null
+    this.socket = new WebSocket(
+      `ws://192.168.0.112:${import.meta.env.PUBLIC_WEBSOCKET_PORT}`
+    )
+    this.joining = false
   }
 
   create() {
@@ -47,11 +60,9 @@ export default class GameScene extends Phaser.Scene {
       right: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     }
 
+    // Use keys 1-4 to add players
     this.playerKeys = {
-      0: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ONE),
-      1: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.TWO),
-      2: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.THREE),
-      3: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.FOUR),
+      space: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
     }
 
     this.ball = this.add.sprite(400, 300, "ball")
@@ -82,76 +93,104 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update() {
-    this.checkPlayers()
-    this.players.forEach((player, i) => {
-      if (this.scoreNumbers[i] > 0) {
-        this.movePaddle(i as keyof typeof playerConfig)
-        this.updateScorePosition(i as keyof typeof playerConfig)
-      }
-    })
-    this.ballCollision()
+    if (
+      this.playerKeys.space.isDown &&
+      !this.controlledPlayer &&
+      !this.joining
+    ) {
+      this.join()
+      this.joining = true
+    }
+    this.socket.onmessage = (event) => {
+      const data = JSON.parse(event.data)
 
-    //Dont apply these to the walls which replace lost players
-    if (this.ball.onPlayerOnePaddle) {
-      this.increaseBallSpeed()
-      this.calculateXCollisions(this.players[0], 1)
+      if (data.type === "playerJoined" && data.payload.id === this.clientId) {
+        this.addPlayer(data.payload, true)
+      }
+      if (data.type === "updatePlayers") {
+        this.updatePlayers(data.payload)
+      }
     }
-    if (this.ball.onPlayerTwoPaddle) {
-      this.increaseBallSpeed()
-      this.calculateYCollisions(this.players[1], 1)
-    }
-    if (this.ball.onPlayerThreePaddle) {
-      this.increaseBallSpeed()
-      this.calculateXCollisions(this.players[2], -1)
-    }
-    if (this.ball.onPlayerFourPaddle) {
-      this.increaseBallSpeed()
-      this.calculateYCollisions(this.players[3], -1)
-    }
+    if (this.controlledPlayer) {
+      if (this.scoreNumbers[this.playerNo] > 0) {
+        this.movePaddle()
+        this.updateScorePosition(
+          this.controlledPlayer.playerNo as keyof typeof playerConfig
+        )
+      }
+      this.ballCollision()
 
-    //check if ball out of play, change scores
-    if (this.ball.x > this.WIDTH + 25) {
-      this.ballLost()
-      if (this.players.length === 4) {
-        this.scoreNumbers[3] -= 1
-        if (this.scoreNumbers[3] == 0) {
-          this.replacePlayerWithWall(3)
-        }
+      //Dont apply these to the walls which replace lost players
+      if (this.ball.onPlayerOnePaddle) {
+        this.increaseBallSpeed()
+        this.calculateXCollisions(this.players[0], 1)
       }
-    } else if (this.ball.x < -25) {
-      this.ballLost()
-      if (this.players.length === 4) {
-        this.scoreNumbers[1] -= 1
-        if (this.scoreNumbers[1] == 0) {
-          this.replacePlayerWithWall(1)
-        }
+      if (this.ball.onPlayerTwoPaddle) {
+        this.increaseBallSpeed()
+        this.calculateYCollisions(this.players[1], 1)
       }
-    } else if (this.ball.y < -25) {
-      this.ballLost()
-      if (this.players.length === 4) {
-        this.scoreNumbers[0] -= 1
-        if (this.scoreNumbers[0] == 0) {
-          this.replacePlayerWithWall(0)
-        }
+      if (this.ball.onPlayerThreePaddle) {
+        this.increaseBallSpeed()
+        this.calculateXCollisions(this.players[2], -1)
       }
-    } else if (this.ball.y > this.HEIGHT + 25) {
-      this.ballLost()
-      if (this.players.length === 4) {
-        this.scoreNumbers[2] -= 1
-        if (this.scoreNumbers[2] == 0) {
-          this.replacePlayerWithWall(2)
-        }
+      if (this.ball.onPlayerFourPaddle) {
+        this.increaseBallSpeed()
+        this.calculateYCollisions(this.players[3], -1)
       }
-    }
 
-    if (this.players.length === 4) {
-      this.updateScores()
+      //check if ball out of play, change scores
+      if (this.ball.x > this.WIDTH + 25) {
+        this.ballLost()
+        if (this.players.length === 4) {
+          this.scoreNumbers[3] -= 1
+          if (this.scoreNumbers[3] == 0) {
+            this.replacePlayerWithWall(3)
+          }
+        }
+      } else if (this.ball.x < -25) {
+        this.ballLost()
+        if (this.players.length === 4) {
+          this.scoreNumbers[1] -= 1
+          if (this.scoreNumbers[1] == 0) {
+            this.replacePlayerWithWall(1)
+          }
+        }
+      } else if (this.ball.y < -25) {
+        this.ballLost()
+        if (this.players.length === 4) {
+          this.scoreNumbers[0] -= 1
+          if (this.scoreNumbers[0] == 0) {
+            this.replacePlayerWithWall(0)
+          }
+        }
+      } else if (this.ball.y > this.HEIGHT + 25) {
+        this.ballLost()
+        if (this.players.length === 4) {
+          this.scoreNumbers[2] -= 1
+          if (this.scoreNumbers[2] == 0) {
+            this.replacePlayerWithWall(2)
+          }
+        }
+      }
+
+      if (this.players.length === 4) {
+        this.updateScores()
+      }
     }
   }
 
-  addplayer(playerNo: keyof typeof playerConfig) {
-    const config = playerConfig[playerNo]
-    this.scoreNumbers[playerNo] = config.hp
+  join() {
+    this.socket.send(
+      JSON.stringify({ type: "join", payload: { clientId: this.clientId } })
+    )
+  }
+
+  addPlayer(playerInfo: PlayerInfo, isLocalPlayer: boolean) {
+    console.log("adding player ", playerInfo.id)
+
+    const config =
+      playerConfig[playerInfo.playerNo as keyof typeof playerConfig]
+    this.scoreNumbers[playerInfo.playerNo] = config.hp
     const player: any =
       config.direction === "y"
         ? this.add.sprite(config.spawn.x, config.spawn.y, "wall")
@@ -160,7 +199,7 @@ export default class GameScene extends Phaser.Scene {
     const hitpoints: any = this.add.text(
       config.spawn.x - 10,
       config.spawn.y - 10,
-      this.scoreNumbers[playerNo].toString(),
+      this.scoreNumbers[playerInfo.playerNo].toString(),
       { font: "16px Arial", color: "#000000", align: "center" }
     )
 
@@ -168,9 +207,21 @@ export default class GameScene extends Phaser.Scene {
     this.physics.world.enable(player)
     player.body!.collideWorldBounds = true
     player.body!.immovable = true
-
+    player.id = playerInfo.id
+    if (isLocalPlayer) {
+      this.controlledPlayer = player
+      this.playerNo = playerInfo.playerNo
+      console.log("controlled player set")
+    }
     this.players.push(player)
     this.scores.push(hitpoints)
+    this.joining = false
+  }
+
+  checkActivePlayer() {
+    if (this.controlledPlayer) {
+      return
+    }
   }
 
   async getConnectionType() {
@@ -179,20 +230,23 @@ export default class GameScene extends Phaser.Scene {
     console.log(connectionType)
   }
 
-  checkPlayers() {
-    Object.keys(this.playerKeys).forEach((key: any) => {
-      if (this.playerKeys[key].isDown && !this.players[key]) {
-        this.addplayer(key as keyof typeof playerConfig)
+  updatePlayers(payload: any) {
+    payload.forEach((player: any) => {
+      if (player.id !== this.clientId) {
+        if (!this.players.some((p) => p.id === player.id)) {
+          this.addPlayer(player, false)
+        } else {
+          const index = this.players.findIndex((p) => p.id === player.id)
+          this.players[index].setPosition(player.location.x, player.location.y)
+        }
       }
     })
   }
 
-  movePaddle(playerNo: keyof typeof playerConfig) {
-    if (!this.players[playerNo]) {
-      return
-    }
-    const config = playerConfig[playerNo]
-    const player = this.players[playerNo]
+  movePaddle() {
+    const player = this.controlledPlayer
+    const config = playerConfig[this.playerNo as keyof typeof playerConfig]
+
     if (config.direction === "x") {
       if (this.wasd.left.isDown) {
         player.body.velocity.x = -1 * this.velocity
@@ -210,6 +264,23 @@ export default class GameScene extends Phaser.Scene {
         player.body.velocity.y = 0
       }
     }
+    this.socket.send(
+      JSON.stringify({
+        type: "updatePlayer",
+        payload: {
+          id: this.clientId,
+          playerNo: this.playerNo,
+          location: {
+            x: player.x,
+            y: player.y,
+          },
+          velocity: {
+            x: player.body.velocity.x,
+            y: player.body.velocity.y,
+          },
+        },
+      })
+    )
   }
 
   updateScorePosition(playerNo: keyof typeof playerConfig) {
