@@ -1,6 +1,6 @@
-import { PlayerState, state } from "./state"
+import { GameState, PlayerState, state } from "./state"
 
-export const addPlayer = (clientId: string) => {
+export const addPlayer = async (clientId: string) => {
   if (state.players.find((p) => p.id === clientId)) {
     throw new Error("Player already exists")
   }
@@ -30,4 +30,25 @@ export const updatePlayer = (player: PlayerState) => {
     return
   }
   state.players[index] = player
+}
+
+export const updateBall = async () => {
+  const now = new Date().getTime()
+  const time = now - state.ball.lastUpdate
+
+  state.ball.location.x += state.ball.velocity.x * time
+  state.ball.location.y += state.ball.velocity.y * time
+  if (
+    state.ball.location.x < 0 ||
+    state.ball.location.x > 800 ||
+    state.ball.location.y < 0 ||
+    state.ball.location.y > 800
+  ) {
+    state.gameRunning = false
+    state.ball.velocity.x = 0
+    state.ball.velocity.y = 0
+    state.ball.location.x = 400
+    state.ball.location.y = 400
+  }
+  state.ball.lastUpdate = now
 }

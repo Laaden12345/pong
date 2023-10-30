@@ -25,7 +25,7 @@ export interface GameState {
     }
     lastUpdate: number
   }
-  gameOver: boolean
+  gameRunning: boolean
 }
 
 export const state: GameState = {
@@ -42,5 +42,5 @@ export const state: GameState = {
     },
     lastUpdate: new Date().getTime(),
   },
-  gameOver: false,
+  gameRunning: false,
 }
