@@ -21,6 +21,7 @@ export default class GameScene extends Phaser.Scene {
   private controlledPlayer: any
   private socket: WebSocket
   private joining: boolean
+  private gameStarted: boolean
   playerNo: number
 
   constructor() {
@@ -50,6 +51,7 @@ export default class GameScene extends Phaser.Scene {
       `ws://192.168.0.112:${import.meta.env.PUBLIC_WEBSOCKET_PORT}`
     )
     this.joining = false
+    this.gameStarted = false
   }
 
   create() {
@@ -63,6 +65,7 @@ export default class GameScene extends Phaser.Scene {
     // Use keys 1-4 to add players
     this.playerKeys = {
       space: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
+      enter: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
     }
 
     this.ball = this.add.sprite(400, 300, "ball")
@@ -101,14 +104,32 @@ export default class GameScene extends Phaser.Scene {
       this.join()
       this.joining = true
     }
+    if (this.playerKeys.enter.isDown) {
+      console.log(this.gameStarted)
+
+      if (!this.gameStarted) {
+        this.socket.send(
+          JSON.stringify({
+            type: "startGame",
+          })
+        )
+      }
+    }
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
+
+      console.log(data)
 
       if (data.type === "playerJoined" && data.payload.id === this.clientId) {
         this.addPlayer(data.payload, true)
       }
       if (data.type === "updatePlayers") {
         this.updatePlayers(data.payload)
+      }
+      if (data.type === "gameStarted") {
+        console.log("starting game")
+
+        this.gameStarted = true
       }
     }
     if (this.controlledPlayer) {
@@ -139,39 +160,39 @@ export default class GameScene extends Phaser.Scene {
       }
 
       //check if ball out of play, change scores
-      if (this.ball.x > this.WIDTH + 25) {
-        this.ballLost()
-        if (this.players.length === 4) {
-          this.scoreNumbers[3] -= 1
-          if (this.scoreNumbers[3] == 0) {
-            this.replacePlayerWithWall(3)
-          }
-        }
-      } else if (this.ball.x < -25) {
-        this.ballLost()
-        if (this.players.length === 4) {
-          this.scoreNumbers[1] -= 1
-          if (this.scoreNumbers[1] == 0) {
-            this.replacePlayerWithWall(1)
-          }
-        }
-      } else if (this.ball.y < -25) {
-        this.ballLost()
-        if (this.players.length === 4) {
-          this.scoreNumbers[0] -= 1
-          if (this.scoreNumbers[0] == 0) {
-            this.replacePlayerWithWall(0)
-          }
-        }
-      } else if (this.ball.y > this.HEIGHT + 25) {
-        this.ballLost()
-        if (this.players.length === 4) {
-          this.scoreNumbers[2] -= 1
-          if (this.scoreNumbers[2] == 0) {
-            this.replacePlayerWithWall(2)
-          }
-        }
-      }
+      // if (this.ball.x > this.WIDTH + 25) {
+      //   this.ballLost()
+      //   if (this.players.length === 4) {
+      //     this.scoreNumbers[3] -= 1
+      //     if (this.scoreNumbers[3] == 0) {
+      //       this.replacePlayerWithWall(3)
+      //     }
+      //   }
+      // } else if (this.ball.x < -25) {
+      //   this.ballLost()
+      //   if (this.players.length === 4) {
+      //     this.scoreNumbers[1] -= 1
+      //     if (this.scoreNumbers[1] == 0) {
+      //       this.replacePlayerWithWall(1)
+      //     }
+      //   }
+      // } else if (this.ball.y < -25) {
+      //   this.ballLost()
+      //   if (this.players.length === 4) {
+      //     this.scoreNumbers[0] -= 1
+      //     if (this.scoreNumbers[0] == 0) {
+      //       this.replacePlayerWithWall(0)
+      //     }
+      //   }
+      // } else if (this.ball.y > this.HEIGHT + 25) {
+      //   this.ballLost()
+      //   if (this.players.length === 4) {
+      //     this.scoreNumbers[2] -= 1
+      //     if (this.scoreNumbers[2] == 0) {
+      //       this.replacePlayerWithWall(2)
+      //     }
+      //   }
+      // }
 
       if (this.players.length === 4) {
         this.updateScores()

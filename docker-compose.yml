@@ -24,5 +24,6 @@ services:
       - .env
     ports:
       - $PUBLIC_BACKEND_PORT:$PUBLIC_BACKEND_PORT
+      - $PUBLIC_WEBSOCKET_PORT:$PUBLIC_WEBSOCKET_PORT
     volumes:
       - ./pong-server/src:/app/src

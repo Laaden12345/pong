@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
-    "target": "esnext",
+    "target": "ES6",
     "moduleResolution": "node",
     "baseUrl": "./src",
     "outDir": "./build",
     "esModuleInterop": true,
+    "useUnknownInCatchVariables": false,
   }
 }
