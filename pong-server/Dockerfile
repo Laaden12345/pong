@@ -6,6 +6,7 @@ COPY package*.json .
 
 RUN npm install
 
-EXPOSE 7777
+EXPOSE ${PUBLIC_BACKEND_PORT}
+EXPOSE ${PUBLIC_WEBSOCKET_PORT}
 
 CMD ["npm", "run", "dev"]
