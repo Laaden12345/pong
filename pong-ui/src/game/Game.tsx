@@ -19,7 +19,7 @@ const Game = () => {
       const { default: GameScene } = await import("./GameScene")
 
       const config = {
-        type: Phaser.AUTO,
+        event: Phaser.AUTO,
         parent: "phaser-container",
         width: 800,
         height: 800,
@@ -44,7 +44,7 @@ const Game = () => {
 
   useEffect(() => {
     const setConnection = async (type: ConnectionType) => {
-      const body = JSON.stringify({ connectionType: type })
+      const body = JSON.stringify({ connectionevent: type })
       console.log(body)
 
       const response = await window.fetch(`${baseUrl}/connection-type`, {
@@ -64,7 +64,7 @@ const Game = () => {
 
   return (
     <div>
-      <div>Active communication type: {activeCommunicationType}</div>
+      <div>Active communication event: {activeCommunicationType}</div>
       {Object.keys(ConnectionType).map((key) => (
         <button
           key={key}

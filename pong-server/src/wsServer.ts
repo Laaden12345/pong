@@ -1,11 +1,9 @@
 import { RawData, WebSocket, WebSocketServer } from "ws"
-import { Worker } from "worker_threads"
+import { addPlayer, updateBall, updatePlayer } from "./game-management"
 import { PlayerState, state } from "./state"
 import { isJson } from "./utils"
-import { addPlayer, updatePlayer } from "./game-management"
-import { spawn } from "child_process"
 
-export const handleMessage = (
+export const handleMessage = async (
   ws: WebSocket,
   wsServer: WebSocketServer,
   message: RawData
@@ -14,16 +12,17 @@ export const handleMessage = (
 
   if (isJson(message.toString())) {
     const json = JSON.parse(message.toString())
-    switch (JSON.parse(message.toString()).type) {
+
+    switch (JSON.parse(message.toString()).event) {
       case "join": {
         try {
           console.log("adding player")
 
-          const player = addPlayer(json.payload.clientId)
+          const player = await addPlayer(json.payload.clientId)
 
           ws.send(
             JSON.stringify({
-              type: "playerJoined",
+              event: "playerJoined",
               payload: player,
             })
           )
@@ -36,32 +35,26 @@ export const handleMessage = (
           break
         }
       }
-      case "updatePlayer": {
-        const playerState = json.payload as PlayerState
-        updatePlayer(playerState)
+      case "getGameState": {
+        if (
+          state.gameRunning &&
+          new Date().getTime() - state.ball.lastUpdate > 10 // throttle ball updates
+        ) {
+          updateBall()
+        }
         wsServer.clients.forEach((client) => {
-          if (client !== ws && client.readyState === WebSocket.OPEN) {
-            const data = JSON.stringify({
-              type: "updatePlayers",
-              payload: state.players,
+          client.send(
+            JSON.stringify({
+              event: "gameState",
+              payload: state,
             })
-
-            client.send(data)
-          }
+          )
         })
         break
       }
-      case "updateBall": {
-        wsServer.clients.forEach((client) => {
-          if (client !== ws && client.readyState === WebSocket.OPEN) {
-            const data = JSON.stringify({
-              type: "updateBall",
-              payload: state.ball,
-            })
-
-            client.send(data)
-          }
-        })
+      case "updatePlayer": {
+        const playerState = json.payload as PlayerState
+        updatePlayer(playerState)
         break
       }
       case "getPlayers": {
@@ -69,11 +62,13 @@ export const handleMessage = (
         break
       }
       case "startGame": {
-        state.gameOver = false
-        state.ball.velocity.x = (Math.random() * 2 - 1) * 400
-        state.ball.velocity.y = (Math.random() * 2 - 1) * 400
-        spawn("node", ["./src/ballWorker.js"])
-        ws.send(JSON.stringify({ type: "gameStarted" }))
+        state.gameRunning = true
+        const direction = Math.random() * Math.PI * 2
+
+        state.ball.velocity.x = Math.cos(direction) * 0.5
+        state.ball.velocity.y = Math.sin(direction) * 0.5
+
+        ws.send(JSON.stringify({ event: "gameStarted" }))
         break
       }
     }

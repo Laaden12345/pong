@@ -21,7 +21,7 @@ export default class GameScene extends Phaser.Scene {
   private controlledPlayer: any
   private socket: WebSocket
   private joining: boolean
-  private gameStarted: boolean
+  private gameRunning: boolean
   playerNo: number
 
   constructor() {
@@ -48,10 +48,12 @@ export default class GameScene extends Phaser.Scene {
     this.scoreNumbers = [10, 10, 10, 10]
     this.controlledPlayer = null
     this.socket = new WebSocket(
-      `ws://192.168.0.112:${import.meta.env.PUBLIC_WEBSOCKET_PORT}`
+      `ws://${window.location.hostname}:${
+        import.meta.env.PUBLIC_WEBSOCKET_PORT
+      }`
     )
     this.joining = false
-    this.gameStarted = false
+    this.gameRunning = true
   }
 
   create() {
@@ -70,10 +72,6 @@ export default class GameScene extends Phaser.Scene {
 
     this.ball = this.add.sprite(400, 300, "ball")
     this.physics.world.enable(this.ball)
-    this.ball.body!.velocity.set(
-      this.ballVelocity,
-      (Math.random() * 2 - 1) * 400
-    )
     this.ball.body!.setBounce(1)
     this.ball.body!.collideWorldBounds = false
     this.ball.onPlayerOnePaddle = false
@@ -105,31 +103,41 @@ export default class GameScene extends Phaser.Scene {
       this.joining = true
     }
     if (this.playerKeys.enter.isDown) {
-      console.log(this.gameStarted)
-
-      if (!this.gameStarted) {
+      if (!this.gameRunning) {
         this.socket.send(
           JSON.stringify({
-            type: "startGame",
+            event: "startGame",
           })
         )
       }
     }
+    this.socket.send(
+      JSON.stringify({
+        event: "getGameState",
+      })
+    )
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
 
-      console.log(data)
-
-      if (data.type === "playerJoined" && data.payload.id === this.clientId) {
+      if (data.event === "playerJoined" && data.payload.id === this.clientId) {
         this.addPlayer(data.payload, true)
       }
-      if (data.type === "updatePlayers") {
-        this.updatePlayers(data.payload)
-      }
-      if (data.type === "gameStarted") {
+      if (data.event === "gameStarted") {
         console.log("starting game")
-
-        this.gameStarted = true
+        this.gameRunning = true
+      }
+      if (data.event === "gameOver") {
+        console.log("game over")
+        this.gameRunning = false
+      }
+      if (data.event === "gameState") {
+        const ball = data.payload.ball
+        this.ball.body!.reset(ball.location.x, ball.location.y)
+        this.ball.body!.velocity.set(ball.velocity.x, ball.velocity.y)
+        this.updatePlayers(data.payload.players)
+        if (this.gameRunning && !data.payload.gameRunning) {
+          this.gameRunning = false
+        }
       }
     }
     if (this.controlledPlayer) {
@@ -159,41 +167,6 @@ export default class GameScene extends Phaser.Scene {
         this.calculateYCollisions(this.players[3], -1)
       }
 
-      //check if ball out of play, change scores
-      // if (this.ball.x > this.WIDTH + 25) {
-      //   this.ballLost()
-      //   if (this.players.length === 4) {
-      //     this.scoreNumbers[3] -= 1
-      //     if (this.scoreNumbers[3] == 0) {
-      //       this.replacePlayerWithWall(3)
-      //     }
-      //   }
-      // } else if (this.ball.x < -25) {
-      //   this.ballLost()
-      //   if (this.players.length === 4) {
-      //     this.scoreNumbers[1] -= 1
-      //     if (this.scoreNumbers[1] == 0) {
-      //       this.replacePlayerWithWall(1)
-      //     }
-      //   }
-      // } else if (this.ball.y < -25) {
-      //   this.ballLost()
-      //   if (this.players.length === 4) {
-      //     this.scoreNumbers[0] -= 1
-      //     if (this.scoreNumbers[0] == 0) {
-      //       this.replacePlayerWithWall(0)
-      //     }
-      //   }
-      // } else if (this.ball.y > this.HEIGHT + 25) {
-      //   this.ballLost()
-      //   if (this.players.length === 4) {
-      //     this.scoreNumbers[2] -= 1
-      //     if (this.scoreNumbers[2] == 0) {
-      //       this.replacePlayerWithWall(2)
-      //     }
-      //   }
-      // }
-
       if (this.players.length === 4) {
         this.updateScores()
       }
@@ -202,7 +175,7 @@ export default class GameScene extends Phaser.Scene {
 
   join() {
     this.socket.send(
-      JSON.stringify({ type: "join", payload: { clientId: this.clientId } })
+      JSON.stringify({ event: "join", payload: { clientId: this.clientId } })
     )
   }
 
@@ -287,7 +260,7 @@ export default class GameScene extends Phaser.Scene {
     }
     this.socket.send(
       JSON.stringify({
-        type: "updatePlayer",
+        event: "updatePlayer",
         payload: {
           id: this.clientId,
           playerNo: this.playerNo,
