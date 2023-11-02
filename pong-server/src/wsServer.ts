@@ -8,8 +8,6 @@ export const handleMessage = async (
   wsServer: WebSocketServer,
   message: RawData
 ) => {
-  console.log(`Message received: ${message}`)
-
   if (isJson(message.toString())) {
     const json = JSON.parse(message.toString())
 
@@ -40,6 +38,7 @@ export const handleMessage = async (
           state.gameRunning &&
           new Date().getTime() - state.ball.lastUpdate > 10 // throttle ball updates
         ) {
+          state.ball.collision = json.payload.collision
           updateBall()
         }
         wsServer.clients.forEach((client) => {

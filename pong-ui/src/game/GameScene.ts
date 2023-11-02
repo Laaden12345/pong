@@ -22,6 +22,7 @@ export default class GameScene extends Phaser.Scene {
   private socket: WebSocket
   private joining: boolean
   private gameRunning: boolean
+  private collision: number
   playerNo: number
 
   constructor() {
@@ -47,6 +48,7 @@ export default class GameScene extends Phaser.Scene {
     this.scores = []
     this.scoreNumbers = [10, 10, 10, 10]
     this.controlledPlayer = null
+    this.collision = -1
     this.socket = new WebSocket(
       `ws://${window.location.hostname}:${
         import.meta.env.PUBLIC_WEBSOCKET_PORT
@@ -114,6 +116,7 @@ export default class GameScene extends Phaser.Scene {
     this.socket.send(
       JSON.stringify({
         event: "getGameState",
+        payload: { collision: this.collision },
       })
     )
     this.socket.onmessage = (event) => {
@@ -132,6 +135,7 @@ export default class GameScene extends Phaser.Scene {
       }
       if (data.event === "gameState") {
         const ball = data.payload.ball
+        if (data.payload.ball.collision != -1) this.collision = -1
         this.ball.body!.reset(ball.location.x, ball.location.y)
         this.ball.body!.velocity.set(ball.velocity.x, ball.velocity.y)
         this.updatePlayers(data.payload.players)
@@ -264,6 +268,8 @@ export default class GameScene extends Phaser.Scene {
         payload: {
           id: this.clientId,
           playerNo: this.playerNo,
+          height: player.displayHeight,
+          width: player.displayWidth,
           location: {
             x: player.x,
             y: player.y,
@@ -287,36 +293,42 @@ export default class GameScene extends Phaser.Scene {
     score.setPosition(player.x - 10, player.y - 10)
   }
 
-  //Function to check paddle and ball collisions
+  //Function to check paddle and ball collisions and return controlled player number if there is collision
   ballCollision() {
+    if (this.controlledPlayer) {
+      this.physics.collide(this.players[this.playerNo], this.ball, () => {
+        this.collision = this.playerNo
+        console.log(this.collision)
+      })
+    }
+  }
+  /*
     this.players.forEach((player, i) => {
       i as keyof typeof playerConfig
       if (i === 0 && this.scoreNumbers[0] > 0) {
-        this.ball.onPlayerOnePaddle = false
-        this.physics.collide(this.players[0], this.ball, () => {
-          this.ball.onPlayerOnePaddle = true
+        this.physics.collide(player, this.ball, () => {
+          console.log("BOOM 1!")
+          return 1
         })
       }
       if (i === 1 && this.scoreNumbers[1] > 0) {
-        this.ball.onPlayerTwoPaddle = false
-        this.physics.collide(this.players[1], this.ball, () => {
-          this.ball.onPlayerTwoPaddle = true
+        this.physics.collide(player, this.ball, () => {
+          console.log("BOOM 2!")
+          return 2
         })
       }
       if (i === 2 && this.scoreNumbers[2] > 0) {
-        this.ball.onPlayerThreePaddle = false
-        this.physics.collide(this.players[2], this.ball, () => {
-          this.ball.onPlayerThreePaddle = true
+        this.physics.collide(player, this.ball, () => {
+          return 3
         })
       }
       if (i === 3 && this.scoreNumbers[3] > 0) {
-        this.ball.onPlayerFourPaddle = false
-        this.physics.collide(this.players[3], this.ball, () => {
-          this.ball.onPlayerFourPaddle = true
+        this.physics.collide(player, this.ball, () => {
+          return 4
         })
       }
     })
-  }
+    return -1*/
 
   calculateYCollisions(paddle: any, direction: any) {
     //Calculate the relative collision point of the ball and paddle

@@ -1,6 +1,8 @@
 export interface PlayerState {
   playerNo: number
   id: string
+  height: number
+  width: number
   location: {
     x: number
     y: number
@@ -23,6 +25,7 @@ export interface GameState {
       x: number
       y: number
     }
+    collision: number
     lastUpdate: number
   }
   gameRunning: boolean
@@ -40,6 +43,7 @@ export const state: GameState = {
       x: 0,
       y: 0,
     },
+    collision: -1,
     lastUpdate: new Date().getTime(),
   },
   gameRunning: false,
