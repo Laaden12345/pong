@@ -68,6 +68,7 @@ export default class GameScene extends Phaser.Scene {
     this.playerKeys = {
       space: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
       enter: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
+      test: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.P),
     }
 
     this.ball = this.add.sprite(400, 300, "ball")
@@ -111,6 +112,11 @@ export default class GameScene extends Phaser.Scene {
         )
       }
     }
+    if (this.playerKeys.test.isDown) {
+        console.log( this.ball.body.velocity)
+        console.log( this.gameRunning)
+      }
+    
     this.socket.send(
       JSON.stringify({
         event: "getGameState",
@@ -132,8 +138,17 @@ export default class GameScene extends Phaser.Scene {
       }
       if (data.event === "gameState") {
         const ball = data.payload.ball
-        this.ball.body!.reset(ball.location.x, ball.location.y)
-        this.ball.body!.velocity.set(ball.velocity.x, ball.velocity.y)
+        if(ball.velocity.x !== 0){console.log(ball.velocity)}
+        if(!this.gameRunning){
+          this.ball.body!.reset(ball.location.x, ball.location.y)
+          
+        }
+        if(this.ball.body.velocity.x === 0 && this.ball.body.velocity.y === 0){
+          this.ball.body.velocity.x = ball.velocity.x
+          this.ball.body.velocity.y = ball.velocity.y
+        } else {
+          this.updateBall()
+        } 
         this.updatePlayers(data.payload.players)
         if (this.gameRunning && !data.payload.gameRunning) {
           this.gameRunning = false
@@ -235,6 +250,25 @@ export default class GameScene extends Phaser.Scene {
         }
       }
     })
+  }
+
+  updateBall(){
+    this.socket.send(
+      JSON.stringify({
+        event: "updateBall",
+        payload: {
+          id: this.clientId,
+          location: {
+            x: this.ball.body.position.x,
+            y: this.ball.body.position.y,
+          },
+          velocity: {
+            x: this.ball.body.velocity.x,
+            y: this.ball.body.velocity.y,
+          },
+        },
+      })
+    )
   }
 
   movePaddle() {

@@ -1,4 +1,4 @@
-import { GameState, PlayerState, state } from "./state"
+import { GameState, PlayerState, state, BallState} from "./state"
 
 export const addPlayer = async (clientId: string) => {
   if (state.players.find((p) => p.id === clientId)) {
@@ -32,12 +32,19 @@ export const updatePlayer = (player: PlayerState) => {
   state.players[index] = player
 }
 
-export const updateBall = async () => {
+
+export const updateBall = async (ballState: BallState|undefined) => {
   const now = new Date().getTime()
   const time = now - state.ball.lastUpdate
 
-  state.ball.location.x += state.ball.velocity.x * time
-  state.ball.location.y += state.ball.velocity.y * time
+  if(ballState !== undefined){
+    state.ball.velocity.x = ballState.velocity.x
+    state.ball.velocity.y = ballState.velocity.y
+    state.ball.location.x = ballState.location.x
+    state.ball.location.y = ballState.location.y
+  } else {
+    
+  }
   if (
     state.ball.location.x < 0 ||
     state.ball.location.x > 800 ||

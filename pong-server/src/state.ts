@@ -11,6 +11,18 @@ export interface PlayerState {
   }
 }
 
+export interface BallState {
+  id: string
+  location: {
+    x: number
+    y: number
+  }
+  velocity: {
+    x: number
+    y: number
+  }
+}
+
 export interface GameState {
   connectedClients: string[]
   players: PlayerState[]
