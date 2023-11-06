@@ -8,8 +8,6 @@ export const handleMessage = async (
   wsServer: WebSocketServer,
   message: RawData
 ) => {
-  console.log(`Message received: ${message}`)
-
   if (isJson(message.toString())) {
     const json = JSON.parse(message.toString())
 
@@ -38,7 +36,7 @@ export const handleMessage = async (
       case "getGameState": {
         if (
           state.gameRunning &&
-          new Date().getTime() - state.ball.lastUpdate > 10 // throttle ball updates
+          new Date().getTime() - state.ball.lastUpdate > (1 / 60) * 1000 // limit update frequency to 60Hz
         ) {
           updateBall(undefined)
         }
@@ -60,11 +58,6 @@ export const handleMessage = async (
       case "updateBall": {
         const ballState = json.payload as BallState
         updateBall(ballState)
-        //ws.send(JSON.stringify(ballState))
-        break
-      }
-      case "getPlayers": {
-        ws.send(JSON.stringify(state.players))
         break
       }
       case "startGame": {

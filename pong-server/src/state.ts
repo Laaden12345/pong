@@ -6,14 +6,9 @@ export interface PlayerState {
     x: number
     y: number
   }
-  velocity: {
-    x: number
-    y: number
-  }
 }
 
 export interface BallState {
-  id: string
   location: {
     x: number
     y: number
@@ -22,34 +17,23 @@ export interface BallState {
     x: number
     y: number
   }
+  lastUpdate: number
 }
 
 export interface GameState {
-  connectedClients: string[]
   players: PlayerState[]
   scores: number[]
-  ball: {
-    location: {
-      x: number
-      y: number
-    }
-    velocity: {
-      x: number
-      y: number
-    }
-    lastUpdate: number
-  }
+  ball: BallState
   gameRunning: boolean
 }
 
 export const state: GameState = {
-  connectedClients: [],
   players: [],
   scores: [10, 10, 10, 10],
   ball: {
     location: {
-      x: 450,
-      y: 450,
+      x: 400,
+      y: 400,
     },
     velocity: {
       x: 0,
