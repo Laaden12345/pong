@@ -159,7 +159,7 @@ export default class GameScene extends Phaser.Scene {
       if (this.scoreNumbers[this.playerNo] > 0) {
         this.movePaddle()
         this.updateScorePosition(
-          this.controlledPlayer.playerNo as keyof typeof playerConfig
+          this.playerNo as keyof typeof playerConfig
         )
       }
       this.ballCollision()
