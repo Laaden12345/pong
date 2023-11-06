@@ -85,22 +85,10 @@ export default class GameScene extends Phaser.Scene {
     this.posts[2] = this.add.sprite(0, this.HEIGHT, "post")
     this.posts[3] = this.add.sprite(this.WIDTH, this.HEIGHT, "post")
 
-    //WALLS WHEN PLAYERS ARE NOT SPAWNED
-    const wall = this.add.sprite(0, 0, "wall2")
-    const wall2 = this.add.sprite(0, 0, "wall")
-    const wall3 = this.add.sprite(0, this.HEIGHT, "wall2")
-    const wall4 = this.add.sprite(this.WIDTH, 0, "wall")
-
-    wall.displayWidth = this.WIDTH
-    wall2.displayHeight = this.HEIGHT
-    wall3.displayWidth = this.WIDTH
-    wall4.displayHeight = this.HEIGHT
-
-    this.players[0] = wall
-    this.players[1] = wall2
-    this.players[2] = wall3
-    this.players[3] = wall4
-
+    this.players[0] = this.getWall(0)
+    this.players[1] = this.getWall(1)
+    this.players[2] = this.getWall(2)
+    this.players[3] = this.getWall(3)
 
     for (let i = 0; i < this.posts.length; i++) {
       this.physics.world.enable(this.posts[i])
@@ -113,6 +101,7 @@ export default class GameScene extends Phaser.Scene {
       this.players[i].body!.collideWorldBounds = true
       this.players[i].body!.immovable = true
       this.physics.add.collider(this.ball, this.players[i])
+      this.players[i].name = "solidwall"
     }
   }
 
@@ -135,10 +124,10 @@ export default class GameScene extends Phaser.Scene {
       }
     }
     if (this.playerKeys.test.isDown) {
-        console.log( this.ball.body.velocity)
-        console.log( this.gameRunning)
-      }
-    
+      console.log(this.players)
+      console.log(this.scoreNumbers)
+    }
+
     this.socket.send(
       JSON.stringify({
         event: "getGameState",
@@ -160,17 +149,29 @@ export default class GameScene extends Phaser.Scene {
       }
       if (data.event === "gameState") {
         const ball = data.payload.ball
-        if(ball.velocity.x !== 0){console.log(ball.velocity)}
-        if(!this.gameRunning){
-          this.ball.body!.reset(ball.location.x, ball.location.y)
-          
+        this.scoreNumbers = data.payload.scores
+        for (let i = 0; i < 4; i++) {
+          if (
+            this.scoreNumbers[i] <= 0 &&
+            this.players[i].name !== "solidwall"
+          ) {
+            console.log("here")
+            this.replacePlayerWithWall(i as keyof typeof playerConfig)
+          }
         }
-        if(this.ball.body.velocity.x === 0 && this.ball.body.velocity.y === 0){
+        if (!this.gameRunning) {
+          this.ball.body!.reset(ball.location.x, ball.location.y)
+        }
+        if (
+          this.ball.body.velocity.x === 0 &&
+          this.ball.body.velocity.y === 0
+        ) {
           this.ball.body.velocity.x = ball.velocity.x
           this.ball.body.velocity.y = ball.velocity.y
         } else {
           this.updateBall()
-        } 
+          //this.checkForLostPlayers()
+        }
         this.updatePlayers(data.payload.players)
         if (this.gameRunning && !data.payload.gameRunning) {
           this.gameRunning = false
@@ -180,10 +181,8 @@ export default class GameScene extends Phaser.Scene {
     if (this.controlledPlayer) {
       if (this.scoreNumbers[this.playerNo] > 0) {
         this.movePaddle()
-        this.updateScorePosition(
-          this.playerNo as keyof typeof playerConfig
-        )
       }
+      this.updateScorePosition()
       this.ballCollision()
 
       //Dont apply these to the walls which replace lost players
@@ -204,9 +203,7 @@ export default class GameScene extends Phaser.Scene {
         this.calculateYCollisions(this.players[3], -1)
       }
 
-      if (this.players.length === 4) {
-        this.updateScores()
-      }
+      this.updateScores()
     }
   }
 
@@ -248,7 +245,7 @@ export default class GameScene extends Phaser.Scene {
     }
     this.players[playerInfo.playerNo].destroy(true)
     this.players[playerInfo.playerNo] = player
-    this.scores.push(hitpoints)
+    this.scores[playerInfo.playerNo] = hitpoints
     this.joining = false
   }
 
@@ -270,14 +267,21 @@ export default class GameScene extends Phaser.Scene {
         if (!this.players.some((p) => p.id === player.id)) {
           this.addPlayer(player, false)
         } else {
-          const index = this.players.findIndex((p) => p.id === player.id)
-          this.players[index].setPosition(player.location.x, player.location.y)
+          if (player.gameOver === false) {
+            const index = this.players.findIndex((p) => p.id === player.id)
+            this.players[index].setPosition(
+              player.location.x,
+              player.location.y
+            )
+          } else {
+            //do nothing
+          }
         }
       }
     })
   }
 
-  updateBall(){
+  updateBall() {
     this.socket.send(
       JSON.stringify({
         event: "updateBall",
@@ -299,7 +303,6 @@ export default class GameScene extends Phaser.Scene {
   movePaddle() {
     const player = this.controlledPlayer
     const config = playerConfig[this.playerNo as keyof typeof playerConfig]
-
     if (config.direction === "x") {
       if (this.wasd.left.isDown) {
         player.body.velocity.x = -1 * this.velocity
@@ -317,6 +320,7 @@ export default class GameScene extends Phaser.Scene {
         player.body.velocity.y = 0
       }
     }
+
     this.socket.send(
       JSON.stringify({
         event: "updatePlayer",
@@ -336,14 +340,16 @@ export default class GameScene extends Phaser.Scene {
     )
   }
 
-  updateScorePosition(playerNo: keyof typeof playerConfig) {
-    if (!this.players[playerNo]) {
-      return
-    }
-    const player = this.players[playerNo]
-    const score = this.scores[playerNo]
+  updateScorePosition() {
+    //console.log(this.players)
+    for (let i = 0; i < this.players.length; i++) {
+      if (this.scores[i] !== undefined) {
+        const player = this.players[i]
+        const score = this.scores[i]
 
-    score.setPosition(player.x - 10, player.y - 10)
+        score.setPosition(player.x - 10, player.y - 10)
+      }
+    }
   }
 
   //Function to check paddle and ball collisions
@@ -428,54 +434,77 @@ export default class GameScene extends Phaser.Scene {
 
   updateScores() {
     for (let i = 0; i < this.scores.length; i++) {
-      this.scores[i].setText(this.scoreNumbers[i].toString())
+      if (this.scoreNumbers[i] !== undefined) {
+        this.scores[i].setText(this.scoreNumbers[i].toString())
+      }
     }
   }
 
-  ballLost() {
-    this.ball.body!.reset(400, 300)
-    this.ball.body!.velocity.set(400, (Math.random() * 2 - 1) * 400)
+  checkForLostPlayers() {
+    for (let i = 0; i < this.scores.length; i++) {
+      if (
+        this.scoreNumbers[i] <= 0 &&
+        this.scoreNumbers[i] > -100 &&
+        this.gameRunning
+      ) {
+        this.replacePlayerWithWall(i as keyof typeof playerConfig)
+        this.scoreNumbers[i] = -999
+      }
+    }
   }
 
   replacePlayerWithWall(playerNo: keyof typeof playerConfig) {
     const config = playerConfig[playerNo]
 
-    const solidWall: any = this.getWall(
-      config.spawn.x,
-      config.spawn.y,
-      config.direction
-    )
+    const solidWall: any = this.getWall(playerNo)
+    solidWall.id = this.players[playerNo].id
 
     this.physics.world.enable(solidWall)
     solidWall.body!.collideWorldBounds = true
     solidWall.body!.immovable = true
+    solidWall.name = "solidwall"
 
     this.players[playerNo].destroy(true)
     this.players[playerNo] = solidWall
     this.physics.add.collider(this.ball, this.players[playerNo])
+
+    this.socket.send(
+      JSON.stringify({
+        event: "updatePlayer",
+        payload: {
+          id: this.clientId,
+          playerNo: this.playerNo,
+          lostGame: true,
+          location: {
+            x: solidWall.body.position.x,
+            y: solidWall.body.position.y,
+          },
+          velocity: {
+            x: 0,
+            y: 0,
+          },
+        },
+      })
+    )
   }
 
-  getWall(x: number, y: number, configDir: string) {
-    if (configDir === "y") {
-      if (x < this.WIDTH / 2) {
-        const wall = this.add.sprite(0, 0, "wall")
-        wall.displayHeight = this.HEIGHT
-        return wall
-      } else {
-        const wall = this.add.sprite(this.WIDTH, 0, "wall")
-        wall.displayHeight = this.HEIGHT
-        return wall
-      }
+  getWall(playerNo: keyof typeof playerConfig) {
+    if (playerNo === 0) {
+      const wall = this.add.sprite(0, 0, "wall2")
+      wall.displayWidth = this.WIDTH
+      return wall
+    } else if (playerNo === 1) {
+      const wall = this.add.sprite(0, 0, "wall")
+      wall.displayHeight = this.HEIGHT
+      return wall
+    } else if (playerNo === 2) {
+      const wall = this.add.sprite(0, this.HEIGHT, "wall2")
+      wall.displayWidth = this.WIDTH
+      return wall
     } else {
-      if (y < this.HEIGHT / 2) {
-        const wall = this.add.sprite(0, 0, "wall2")
-        wall.displayWidth = this.WIDTH
-        return wall
-      } else {
-        const wall = this.add.sprite(0, this.HEIGHT, "wall2")
-        wall.displayWidth = this.WIDTH
-        return wall
-      }
+      const wall = this.add.sprite(this.WIDTH, 0, "wall")
+      wall.displayHeight = this.HEIGHT
+      return wall
     }
   }
 }

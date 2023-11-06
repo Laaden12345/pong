@@ -1,4 +1,4 @@
-import { GameState, PlayerState, state, BallState} from "./state"
+import { GameState, PlayerState, state, BallState } from "./state"
 
 export const addPlayer = async (clientId: string) => {
   if (state.players.find((p) => p.id === clientId)) {
@@ -10,6 +10,7 @@ export const addPlayer = async (clientId: string) => {
   const player: PlayerState = {
     playerNo: state.players.length,
     id: clientId,
+    lostGame: false,
     location: {
       x: 0,
       y: 0,
@@ -32,30 +33,61 @@ export const updatePlayer = (player: PlayerState) => {
   state.players[index] = player
 }
 
-
-export const updateBall = async (ballState: BallState|undefined) => {
+export const updateBall = async (ballState: BallState | undefined) => {
   const now = new Date().getTime()
   const time = now - state.ball.lastUpdate
 
-  if(ballState !== undefined){
+  if (ballState !== undefined) {
     state.ball.velocity.x = ballState.velocity.x
     state.ball.velocity.y = ballState.velocity.y
     state.ball.location.x = ballState.location.x
     state.ball.location.y = ballState.location.y
   } else {
-    
   }
   if (
-    state.ball.location.x < 0 ||
-    state.ball.location.x > 800 ||
-    state.ball.location.y < 0 ||
-    state.ball.location.y > 800
+    state.ball.location.x < -25 ||
+    state.ball.location.x > 825 ||
+    state.ball.location.y < -25 ||
+    state.ball.location.y > 825
   ) {
-    state.gameRunning = false
+    const x = state.ball.location.x
+    const y = state.ball.location.y
     state.ball.velocity.x = 0
     state.ball.velocity.y = 0
     state.ball.location.x = 400
     state.ball.location.y = 400
+    updateScores(x, y, state.gameRunning)
+    state.gameRunning = false
   }
   state.ball.lastUpdate = now
+}
+
+const updateScores = async (
+  x: number,
+  y: number,
+  needsScoreUpdate: boolean
+) => {
+  if (needsScoreUpdate) {
+    if (y < -25) {
+      state.scores[0] -= 1
+      if (state.scores[0] <= 0) {
+        state.players[0].lostGame = true
+      }
+    } else if (x < -25) {
+      state.scores[1] -= 1
+      if (state.scores[1] <= 0) {
+        state.players[1].lostGame = true
+      }
+    } else if (y > 825) {
+      state.scores[2] -= 1
+      if (state.scores[2] <= 0) {
+        state.players[2].lostGame = true
+      }
+    } else if (x > 825) {
+      state.scores[3] -= 1
+      if (state.scores[3] <= 0) {
+        state.players[3].lostGame = true
+      }
+    }
+  }
 }
