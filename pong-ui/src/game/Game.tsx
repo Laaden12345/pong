@@ -4,6 +4,8 @@ import { baseUrl } from "../config"
 export enum ConnectionType {
   WEBSOCKET = "Websocket",
   WEBRTC = "WebRTC (not implemented)",
+  LONG_POLLING = "Long polling (not implemented)",
+  MQTT = "MQTT (not implemented)",
 }
 
 const Game = () => {
@@ -14,7 +16,7 @@ const Game = () => {
     useState<ConnectionType>("WEBSOCKET" as ConnectionType)
 
   useEffect(() => {
-    async function initPhaser() {
+    const initPhaser = async () => {
       const Phaser = await import("phaser")
       const { default: GameScene } = await import("./GameScene")
 
@@ -44,8 +46,7 @@ const Game = () => {
 
   useEffect(() => {
     const setConnection = async (type: ConnectionType) => {
-      const body = JSON.stringify({ connectionevent: type })
-      console.log(body)
+      const body = JSON.stringify({ connectionType: type })
 
       const response = await window.fetch(`${baseUrl}/connection-type`, {
         method: "POST",
@@ -63,18 +64,26 @@ const Game = () => {
   }, [newCommunicationType])
 
   return (
-    <div>
-      <div>Active communication event: {activeCommunicationType}</div>
-      {Object.keys(ConnectionType).map((key) => (
-        <button
-          key={key}
-          value={key}
-          onClick={() => setNewCommunicationType(key as ConnectionType)}
-        >
-          {ConnectionType[key as keyof typeof ConnectionType]}
-        </button>
-      ))}
-      <div id="phaser-container" />
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <div>
+        <div>Active communication type: {activeCommunicationType}</div>
+        {Object.keys(ConnectionType).map((key) => (
+          <button
+            key={key}
+            value={key}
+            onClick={() => setNewCommunicationType(key as ConnectionType)}
+          >
+            {ConnectionType[key as keyof typeof ConnectionType]}
+          </button>
+        ))}
+      </div>
+      <div id="phaser-container" style={{ marginTop: "2rem" }} />
     </div>
   )
 }

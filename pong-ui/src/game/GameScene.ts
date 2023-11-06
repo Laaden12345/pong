@@ -1,6 +1,7 @@
 import Phaser from "phaser"
 import { v4 as uuidv4 } from "uuid"
 import playerConfig from "./playerConfig"
+import { baseUrl } from "../config"
 
 export default class GameScene extends Phaser.Scene {
   private clientId: string
@@ -41,7 +42,7 @@ export default class GameScene extends Phaser.Scene {
     this.velocity = 800
     this.ballVelocity = 400
 
-    this.backendUrl = `http://localhost:${import.meta.env.PUBLIC_BACKEND_PORT}`
+    this.backendUrl = baseUrl
     this.players = []
     this.posts = []
     this.scores = []
@@ -64,14 +65,13 @@ export default class GameScene extends Phaser.Scene {
       right: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     }
 
-    // Use keys 1-4 to add players
     this.playerKeys = {
       space: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
       enter: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
-      test: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.P),
+      esc: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC),
     }
 
-    this.ball = this.add.sprite(400, 300, "ball")
+    this.ball = this.add.sprite(350, 350, "ball")
     this.physics.world.enable(this.ball)
     this.ball.body!.setBounce(1)
     this.ball.body!.collideWorldBounds = false
@@ -123,10 +123,6 @@ export default class GameScene extends Phaser.Scene {
         )
       }
     }
-    if (this.playerKeys.test.isDown) {
-      console.log(this.players)
-      console.log(this.scoreNumbers)
-    }
 
     this.socket.send(
       JSON.stringify({
@@ -166,6 +162,7 @@ export default class GameScene extends Phaser.Scene {
           this.ball.body.velocity.x === 0 &&
           this.ball.body.velocity.y === 0
         ) {
+          this.ballVelocity = 400
           this.ball.body.velocity.x = ball.velocity.x
           this.ball.body.velocity.y = ball.velocity.y
         } else {
@@ -182,7 +179,6 @@ export default class GameScene extends Phaser.Scene {
       if (this.scoreNumbers[this.playerNo] > 0) {
         this.movePaddle()
       }
-      this.updateScorePosition()
       this.ballCollision()
 
       //Dont apply these to the walls which replace lost players
@@ -202,9 +198,10 @@ export default class GameScene extends Phaser.Scene {
         this.increaseBallSpeed()
         this.calculateYCollisions(this.players[3], -1)
       }
-
-      this.updateScores()
     }
+
+    this.updateScores()
+    this.updateScorePosition()
   }
 
   join() {
@@ -266,16 +263,9 @@ export default class GameScene extends Phaser.Scene {
       if (player.id !== this.clientId) {
         if (!this.players.some((p) => p.id === player.id)) {
           this.addPlayer(player, false)
-        } else {
-          if (player.gameOver === false) {
-            const index = this.players.findIndex((p) => p.id === player.id)
-            this.players[index].setPosition(
-              player.location.x,
-              player.location.y
-            )
-          } else {
-            //do nothing
-          }
+        } else if (!player.lostGame) {
+          const index = this.players.findIndex((p) => p.id === player.id)
+          this.players[index].setPosition(player.location.x, player.location.y)
         }
       }
     })
@@ -331,17 +321,12 @@ export default class GameScene extends Phaser.Scene {
             x: player.x,
             y: player.y,
           },
-          velocity: {
-            x: player.body.velocity.x,
-            y: player.body.velocity.y,
-          },
         },
       })
     )
   }
 
   updateScorePosition() {
-    //console.log(this.players)
     for (let i = 0; i < this.players.length; i++) {
       if (this.scores[i] !== undefined) {
         const player = this.players[i]
@@ -479,10 +464,6 @@ export default class GameScene extends Phaser.Scene {
             x: solidWall.body.position.x,
             y: solidWall.body.position.y,
           },
-          velocity: {
-            x: 0,
-            y: 0,
-          },
         },
       })
     )
@@ -494,12 +475,12 @@ export default class GameScene extends Phaser.Scene {
       wall.displayWidth = this.WIDTH
       return wall
     } else if (playerNo === 1) {
-      const wall = this.add.sprite(0, 0, "wall")
-      wall.displayHeight = this.HEIGHT
-      return wall
-    } else if (playerNo === 2) {
       const wall = this.add.sprite(0, this.HEIGHT, "wall2")
       wall.displayWidth = this.WIDTH
+      return wall
+    } else if (playerNo === 2) {
+      const wall = this.add.sprite(0, 0, "wall")
+      wall.displayHeight = this.HEIGHT
       return wall
     } else {
       const wall = this.add.sprite(this.WIDTH, 0, "wall")
