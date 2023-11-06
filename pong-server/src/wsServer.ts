@@ -1,6 +1,6 @@
 import { RawData, WebSocket, WebSocketServer } from "ws"
 import { addPlayer, updateBall, updatePlayer } from "./game-management"
-import { PlayerState, state } from "./state"
+import { PlayerState, BallState, state } from "./state"
 import { isJson } from "./utils"
 
 export const handleMessage = async (
@@ -40,7 +40,7 @@ export const handleMessage = async (
           state.gameRunning &&
           new Date().getTime() - state.ball.lastUpdate > 10 // throttle ball updates
         ) {
-          updateBall()
+          updateBall(undefined)
         }
         wsServer.clients.forEach((client) => {
           client.send(
@@ -57,6 +57,12 @@ export const handleMessage = async (
         updatePlayer(playerState)
         break
       }
+      case "updateBall": {
+        const ballState = json.payload as BallState
+        updateBall(ballState)
+        //ws.send(JSON.stringify(ballState))
+        break
+      }
       case "getPlayers": {
         ws.send(JSON.stringify(state.players))
         break
@@ -65,8 +71,8 @@ export const handleMessage = async (
         state.gameRunning = true
         const direction = Math.random() * Math.PI * 2
 
-        state.ball.velocity.x = Math.cos(direction) * 0.5
-        state.ball.velocity.y = Math.sin(direction) * 0.5
+        state.ball.velocity.x = Math.cos(direction) * 0.5 * 1000
+        state.ball.velocity.y = Math.sin(direction) * 0.5 * 1000
 
         ws.send(JSON.stringify({ event: "gameStarted" }))
         break

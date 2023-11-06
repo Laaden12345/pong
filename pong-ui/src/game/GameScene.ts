@@ -68,6 +68,7 @@ export default class GameScene extends Phaser.Scene {
     this.playerKeys = {
       space: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
       enter: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
+      test: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.P),
     }
 
     this.ball = this.add.sprite(400, 300, "ball")
@@ -84,12 +85,34 @@ export default class GameScene extends Phaser.Scene {
     this.posts[2] = this.add.sprite(0, this.HEIGHT, "post")
     this.posts[3] = this.add.sprite(this.WIDTH, this.HEIGHT, "post")
 
+    //WALLS WHEN PLAYERS ARE NOT SPAWNED
+    const wall = this.add.sprite(0, 0, "wall2")
+    const wall2 = this.add.sprite(0, 0, "wall")
+    const wall3 = this.add.sprite(0, this.HEIGHT, "wall2")
+    const wall4 = this.add.sprite(this.WIDTH, 0, "wall")
+
+    wall.displayWidth = this.WIDTH
+    wall2.displayHeight = this.HEIGHT
+    wall3.displayWidth = this.WIDTH
+    wall4.displayHeight = this.HEIGHT
+
+    this.players[0] = wall
+    this.players[1] = wall2
+    this.players[2] = wall3
+    this.players[3] = wall4
+
+
     for (let i = 0; i < this.posts.length; i++) {
       this.physics.world.enable(this.posts[i])
       this.posts[i].setScale(2)
       this.posts[i].body!.setBounce(1)
       this.posts[i].body!.immovable = true
       this.physics.add.collider(this.ball, this.posts[i])
+
+      this.physics.world.enable(this.players[i])
+      this.players[i].body!.collideWorldBounds = true
+      this.players[i].body!.immovable = true
+      this.physics.add.collider(this.ball, this.players[i])
     }
   }
 
@@ -111,6 +134,11 @@ export default class GameScene extends Phaser.Scene {
         )
       }
     }
+    if (this.playerKeys.test.isDown) {
+        console.log( this.ball.body.velocity)
+        console.log( this.gameRunning)
+      }
+    
     this.socket.send(
       JSON.stringify({
         event: "getGameState",
@@ -132,8 +160,17 @@ export default class GameScene extends Phaser.Scene {
       }
       if (data.event === "gameState") {
         const ball = data.payload.ball
-        this.ball.body!.reset(ball.location.x, ball.location.y)
-        this.ball.body!.velocity.set(ball.velocity.x, ball.velocity.y)
+        if(ball.velocity.x !== 0){console.log(ball.velocity)}
+        if(!this.gameRunning){
+          this.ball.body!.reset(ball.location.x, ball.location.y)
+          
+        }
+        if(this.ball.body.velocity.x === 0 && this.ball.body.velocity.y === 0){
+          this.ball.body.velocity.x = ball.velocity.x
+          this.ball.body.velocity.y = ball.velocity.y
+        } else {
+          this.updateBall()
+        } 
         this.updatePlayers(data.payload.players)
         if (this.gameRunning && !data.payload.gameRunning) {
           this.gameRunning = false
@@ -144,7 +181,7 @@ export default class GameScene extends Phaser.Scene {
       if (this.scoreNumbers[this.playerNo] > 0) {
         this.movePaddle()
         this.updateScorePosition(
-          this.controlledPlayer.playerNo as keyof typeof playerConfig
+          this.playerNo as keyof typeof playerConfig
         )
       }
       this.ballCollision()
@@ -181,6 +218,8 @@ export default class GameScene extends Phaser.Scene {
 
   addPlayer(playerInfo: PlayerInfo, isLocalPlayer: boolean) {
     console.log("adding player ", playerInfo.id)
+    console.log(playerInfo)
+    console.log(isLocalPlayer)
 
     const config =
       playerConfig[playerInfo.playerNo as keyof typeof playerConfig]
@@ -207,7 +246,8 @@ export default class GameScene extends Phaser.Scene {
       this.playerNo = playerInfo.playerNo
       console.log("controlled player set")
     }
-    this.players.push(player)
+    this.players[playerInfo.playerNo].destroy(true)
+    this.players[playerInfo.playerNo] = player
     this.scores.push(hitpoints)
     this.joining = false
   }
@@ -235,6 +275,25 @@ export default class GameScene extends Phaser.Scene {
         }
       }
     })
+  }
+
+  updateBall(){
+    this.socket.send(
+      JSON.stringify({
+        event: "updateBall",
+        payload: {
+          id: this.clientId,
+          location: {
+            x: this.ball.body.position.x,
+            y: this.ball.body.position.y,
+          },
+          velocity: {
+            x: this.ball.body.velocity.x,
+            y: this.ball.body.velocity.y,
+          },
+        },
+      })
+    )
   }
 
   movePaddle() {
