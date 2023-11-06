@@ -1,6 +1,7 @@
 export interface PlayerState {
   playerNo: number
   id: string
+  lostGame: boolean
   location: {
     x: number
     y: number
@@ -26,6 +27,7 @@ export interface BallState {
 export interface GameState {
   connectedClients: string[]
   players: PlayerState[]
+  scores: number[]
   ball: {
     location: {
       x: number
@@ -43,6 +45,7 @@ export interface GameState {
 export const state: GameState = {
   connectedClients: [],
   players: [],
+  scores: [10, 10, 10, 10],
   ball: {
     location: {
       x: 450,
