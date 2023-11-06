@@ -85,12 +85,34 @@ export default class GameScene extends Phaser.Scene {
     this.posts[2] = this.add.sprite(0, this.HEIGHT, "post")
     this.posts[3] = this.add.sprite(this.WIDTH, this.HEIGHT, "post")
 
+    //WALLS WHEN PLAYERS ARE NOT SPAWNED
+    const wall = this.add.sprite(0, 0, "wall2")
+    const wall2 = this.add.sprite(0, 0, "wall")
+    const wall3 = this.add.sprite(0, this.HEIGHT, "wall2")
+    const wall4 = this.add.sprite(this.WIDTH, 0, "wall")
+
+    wall.displayWidth = this.WIDTH
+    wall2.displayHeight = this.HEIGHT
+    wall3.displayWidth = this.WIDTH
+    wall4.displayHeight = this.HEIGHT
+
+    this.players[0] = wall
+    this.players[1] = wall2
+    this.players[2] = wall3
+    this.players[3] = wall4
+
+
     for (let i = 0; i < this.posts.length; i++) {
       this.physics.world.enable(this.posts[i])
       this.posts[i].setScale(2)
       this.posts[i].body!.setBounce(1)
       this.posts[i].body!.immovable = true
       this.physics.add.collider(this.ball, this.posts[i])
+
+      this.physics.world.enable(this.players[i])
+      this.players[i].body!.collideWorldBounds = true
+      this.players[i].body!.immovable = true
+      this.physics.add.collider(this.ball, this.players[i])
     }
   }
 
@@ -196,6 +218,8 @@ export default class GameScene extends Phaser.Scene {
 
   addPlayer(playerInfo: PlayerInfo, isLocalPlayer: boolean) {
     console.log("adding player ", playerInfo.id)
+    console.log(playerInfo)
+    console.log(isLocalPlayer)
 
     const config =
       playerConfig[playerInfo.playerNo as keyof typeof playerConfig]
@@ -222,7 +246,8 @@ export default class GameScene extends Phaser.Scene {
       this.playerNo = playerInfo.playerNo
       console.log("controlled player set")
     }
-    this.players.push(player)
+    this.players[playerInfo.playerNo].destroy(true)
+    this.players[playerInfo.playerNo] = player
     this.scores.push(hitpoints)
     this.joining = false
   }
