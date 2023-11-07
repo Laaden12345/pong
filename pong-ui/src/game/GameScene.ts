@@ -188,11 +188,11 @@ export default class GameScene extends Phaser.Scene {
       }
       if (this.ball.onPlayerTwoPaddle) {
         this.increaseBallSpeed()
-        this.calculateYCollisions(this.players[1], 1)
+        this.calculateXCollisions(this.players[1], -1)
       }
       if (this.ball.onPlayerThreePaddle) {
         this.increaseBallSpeed()
-        this.calculateXCollisions(this.players[2], -1)
+        this.calculateYCollisions(this.players[2], 1)
       }
       if (this.ball.onPlayerFourPaddle) {
         this.increaseBallSpeed()
@@ -386,7 +386,7 @@ export default class GameScene extends Phaser.Scene {
     this.ball.body.velocity.x = direction * ballVx
 
     direction === 1
-      ? (this.ball.onPlayerTwoPaddle = false)
+      ? (this.ball.onPlayerThreePaddle = false)
       : (this.ball.onPlayerFourPaddle = false)
   }
 
@@ -408,7 +408,7 @@ export default class GameScene extends Phaser.Scene {
 
     direction === 1
       ? (this.ball.onPlayerOnePaddle = false)
-      : (this.ball.onPlayerThreePaddle = false)
+      : (this.ball.onPlayerTwoPaddle = false)
   }
   //Update ball velocity after each collision
   increaseBallSpeed() {
