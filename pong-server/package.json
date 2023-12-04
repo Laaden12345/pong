@@ -6,6 +6,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "mqtt": "^5.2.1",
     "redis": "^4.6.10",
     "redis-json": "^6.0.3",
     "ws": "^8.14.2"
@@ -13,7 +14,7 @@
   "scripts": {
     "start": "NODE_PATH=./build node build/index.js",
     "build": "tsc -p .",
-    "dev": "nodemon src/index.ts",
+    "dev": "nodemon --ext ts src/index.ts",
     "test": "jest --no-cache"
   },
   "devDependencies": {

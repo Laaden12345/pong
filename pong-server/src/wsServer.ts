@@ -1,5 +1,10 @@
 import { RawData, WebSocket, WebSocketServer } from "ws"
-import { addPlayer, updateBall, updatePlayer } from "./game-management"
+import {
+  addPlayer,
+  removePlayer,
+  updateBall,
+  updatePlayer,
+} from "./game-management"
 import { PlayerState, BallState, state } from "./state"
 import { isJson } from "./utils"
 
@@ -40,6 +45,15 @@ export const handleMessage = async (
         ) {
           updateBall(undefined)
         }
+        state.players.forEach((player) => {
+          if (
+            player.lastPingUpdate &&
+            new Date().getTime() - player.lastPingUpdate > 5000
+          ) {
+            console.log(`Removing player ${player.id} due to timeout`)
+            removePlayer(player.id)
+          }
+        })
         wsServer.clients.forEach((client) => {
           client.send(
             JSON.stringify({

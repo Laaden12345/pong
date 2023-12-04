@@ -153,3 +153,6 @@ yarn-debug.log*
 yarn-error.log*
 
 .vscode
+
+pong-server/pings/*
+!pong-server/pings/.gitkeep
