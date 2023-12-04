@@ -5,7 +5,9 @@
 Add .env file to project root:
 
 ```
+PUBLIC_BACKEND_URL=<url>
 PUBLIC_BACKEND_PORT=<port number>
+PUBLIC_WEBSOCKET_PORT=<port number>
 FRONTEND_PORT=<port number>
 ```
 

@@ -27,3 +27,4 @@ services:
       - $PUBLIC_WEBSOCKET_PORT:$PUBLIC_WEBSOCKET_PORT
     volumes:
       - ./pong-server/src:/app/src
+      - ./pong-server/pings:/app/pings

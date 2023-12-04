@@ -23,7 +23,11 @@ export default class GameScene extends Phaser.Scene {
   private socket: WebSocket
   private joining: boolean
   private gameRunning: boolean
-  playerNo: number
+  private pings: number[]
+  private recordPing: boolean
+  private recordPingStart: Date
+  private playerNo: number
+  private connectionType: string
 
   constructor() {
     super("hello-world")
@@ -49,12 +53,16 @@ export default class GameScene extends Phaser.Scene {
     this.scoreNumbers = [10, 10, 10, 10]
     this.controlledPlayer = null
     this.socket = new WebSocket(
-      `ws://${window.location.hostname}:${
+      `ws://${import.meta.env.PUBLIC_BACKEND_URL}:${
         import.meta.env.PUBLIC_WEBSOCKET_PORT
       }`
     )
     this.joining = false
     this.gameRunning = true
+    this.pings = []
+    this.recordPing = false
+    this.recordPingStart = new Date()
+    this.connectionType = "WEBSOCKET"
   }
 
   create() {
@@ -68,7 +76,7 @@ export default class GameScene extends Phaser.Scene {
     this.playerKeys = {
       space: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
       enter: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
-      esc: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC),
+      r: this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.R),
     }
 
     this.ball = this.add.sprite(350, 350, "ball")
@@ -103,6 +111,33 @@ export default class GameScene extends Phaser.Scene {
       this.physics.add.collider(this.ball, this.players[i])
       this.players[i].name = "solidwall"
     }
+
+    this.playerKeys.r.on("down", () => {
+      if (this.recordPing) {
+        console.log("sending pings")
+        const body = {
+          pings: this.pings,
+          protocol: this.connectionType,
+          duration:
+            (new Date().getTime() - this.recordPingStart.getTime()) / 1000,
+        }
+        console.log(body)
+
+        fetch(`${this.backendUrl}/pings`, {
+          method: "POST",
+          body: JSON.stringify(body),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+        this.pings = []
+        this.recordPing = false
+      } else {
+        console.log("starting ping recording")
+        this.recordPing = true
+        this.recordPingStart = new Date()
+      }
+    })
   }
 
   update() {
@@ -202,6 +237,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.updateScores()
     this.updateScorePosition()
+    this.getConnectionType()
   }
 
   join() {
@@ -254,8 +290,8 @@ export default class GameScene extends Phaser.Scene {
 
   async getConnectionType() {
     const response = await fetch(`${this.backendUrl}/connection-type`)
-    const connectionType = await response.json()
-    console.log(connectionType)
+    const json = await response.json()
+    this.connectionType = json.connectionType
   }
 
   updatePlayers(payload: any) {
@@ -267,6 +303,8 @@ export default class GameScene extends Phaser.Scene {
           const index = this.players.findIndex((p) => p.id === player.id)
           this.players[index].setPosition(player.location.x, player.location.y)
         }
+      } else if (this.recordPing) {
+        this.pings.push(new Date().getTime() - player.lastPingUpdate)
       }
     })
   }
@@ -317,6 +355,7 @@ export default class GameScene extends Phaser.Scene {
         payload: {
           id: this.clientId,
           playerNo: this.playerNo,
+          lastPingUpdate: new Date().getTime(),
           location: {
             x: player.x,
             y: player.y,

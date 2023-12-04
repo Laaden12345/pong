@@ -2,6 +2,7 @@ export interface PlayerState {
   playerNo: number
   id: string
   lostGame: boolean
+  lastPingUpdate?: number
   location: {
     x: number
     y: number
