@@ -16,19 +16,26 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [14.x, 16.x, 18.x]
+        node-version: [18.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
     - uses: actions/checkout@v3
-    - name: Use Node.js 18
+    - name: Build server
       uses: actions/setup-node@v3
       with:
-        node-version: 18
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - name: Build server
+        cache-dependency-path: ./pong-server/package-lock.json
+    - name: Run npm on server
       working-directory: ./pong-server
       run: npm ci && npm run build
     - name: Build client
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: ./pong-client/package-lock.json
+    - name: Run npm on client
       working-directory: ./pong-client
       run: npm ci && npm run build
