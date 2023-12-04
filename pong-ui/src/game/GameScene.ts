@@ -28,6 +28,7 @@ export default class GameScene extends Phaser.Scene {
   private recordPingStart: Date
   private playerNo: number
   private connectionType: string
+  private protocolRefreshTimer: Phaser.Time.TimerEvent
 
   constructor() {
     super("hello-world")
@@ -138,6 +139,15 @@ export default class GameScene extends Phaser.Scene {
         this.recordPingStart = new Date()
       }
     })
+
+    this.protocolRefreshTimer = this.time.addEvent({
+      delay: 500,
+      callback: () => {
+        this.getConnectionType()
+      },
+      callbackScope: this,
+      loop: true,
+    })
   }
 
   update() {
@@ -159,11 +169,13 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    this.socket.send(
-      JSON.stringify({
-        event: "getGameState",
-      })
-    )
+    if (this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(
+        JSON.stringify({
+          event: "getGameState",
+        })
+      )
+    }
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
 
@@ -237,7 +249,6 @@ export default class GameScene extends Phaser.Scene {
 
     this.updateScores()
     this.updateScorePosition()
-    this.getConnectionType()
   }
 
   join() {
@@ -249,7 +260,6 @@ export default class GameScene extends Phaser.Scene {
   addPlayer(playerInfo: PlayerInfo, isLocalPlayer: boolean) {
     console.log("adding player ", playerInfo.id)
     console.log(playerInfo)
-    console.log(isLocalPlayer)
 
     const config =
       playerConfig[playerInfo.playerNo as keyof typeof playerConfig]
@@ -305,6 +315,23 @@ export default class GameScene extends Phaser.Scene {
         }
       } else if (this.recordPing) {
         this.pings.push(new Date().getTime() - player.lastPingUpdate)
+      }
+    })
+
+    this.players.forEach((player, i) => {
+      if (
+        player.id !== undefined &&
+        !payload.some((p: any) => p.id === player.id)
+      ) {
+        console.log(i)
+        player.destroy(true)
+        this.players[i] = this.getWall(i as keyof typeof playerConfig)
+        this.scoreNumbers[i] = -999
+        this.physics.world.enable(this.players[i])
+        this.players[i].body!.collideWorldBounds = true
+        this.players[i].body!.immovable = true
+        this.physics.add.collider(this.ball, this.players[i])
+        this.players[i].name = "solidwall"
       }
     })
   }

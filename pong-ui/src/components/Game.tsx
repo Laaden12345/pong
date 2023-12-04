@@ -9,6 +9,7 @@ export enum ConnectionType {
 }
 
 interface PingData {
+  id: string
   time: string
   protocol: string
   duration: number
@@ -89,6 +90,15 @@ const Game = () => {
     return () => clearInterval(intervalId)
   }, [useState])
 
+  const handleDelete = async (id: string) => {
+    await window.fetch(`${baseUrl}/pings/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+  }
+
   return (
     <div
       style={{
@@ -128,6 +138,7 @@ const Game = () => {
               <th>99th percentile</th>
               <th>Min</th>
               <th>Max</th>
+              <th>Delete</th>
             </tr>
           </thead>
           <tbody>
@@ -143,16 +154,27 @@ const Game = () => {
                     <td>{result.ninetynine} ms</td>
                     <td>{result.min} ms</td>
                     <td>{result.max} ms</td>
+                    <td>
+                      <button onClick={() => handleDelete(result.id)}>
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 )
               } else {
                 return (
                   <tr key={index}>
                     <td>{new Date(result.time).toLocaleString()}</td>
+                    <td>{result.protocol}</td>
                     <td>{result.duration} s</td>
                     {[...Array(5)].map((_, i) => (
                       <td key={i}>-</td>
                     ))}
+                    <td>
+                      <button onClick={() => handleDelete(result.id)}>
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 )
               }

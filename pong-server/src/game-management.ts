@@ -7,8 +7,18 @@ export const addPlayer = async (clientId: string) => {
   if (state.players.length >= 4) {
     throw new Error("Max players reached")
   }
+  let playerNo = 4
+  for (let i = 0; i < 4; i++) {
+    if (!state.players.find((p) => p.playerNo === i)) {
+      playerNo = i
+      break
+    }
+  }
+
+  console.log(`Player ${clientId} joined as player ${playerNo}`)
+
   const player: PlayerState = {
-    playerNo: state.players.length,
+    playerNo,
     id: clientId,
     lostGame: false,
     location: {
@@ -27,6 +37,16 @@ export const updatePlayer = (player: PlayerState) => {
     return
   }
   state.players[index] = player
+}
+
+export const removePlayer = (clientId: string) => {
+  const index = state.players.findIndex((p) => p.id === clientId)
+  if (index === -1) {
+    console.log(`Player ${clientId} not found`)
+    return
+  }
+  state.players.splice(index, 1)
+  console.log(`Player ${clientId} removed`)
 }
 
 export const updateBall = async (ballState?: BallState) => {

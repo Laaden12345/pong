@@ -1,6 +1,5 @@
 {
-  "watch": ["./src/"],
-  "ignore": ["./pings/"],
+  "watch": ["src"],
   "ext": "ts, json",
   "execMap": {
     "ts": "node --nolazy -r ts-node/register"
