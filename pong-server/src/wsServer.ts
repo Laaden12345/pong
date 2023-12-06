@@ -45,7 +45,7 @@ export const handleMessage = async (
         ) {
           updateBall(undefined)
         }
-        state.players.forEach((player) => {
+        /* state.players.forEach((player) => {
           if (
             player.lastPingUpdate &&
             new Date().getTime() - player.lastPingUpdate > 5000
@@ -53,7 +53,7 @@ export const handleMessage = async (
             console.log(`Removing player ${player.id} due to timeout`)
             removePlayer(player.id)
           }
-        })
+        }) */
         wsServer.clients.forEach((client) => {
           client.send(
             JSON.stringify({

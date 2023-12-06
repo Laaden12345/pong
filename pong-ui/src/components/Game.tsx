@@ -4,7 +4,7 @@ import { baseUrl } from "../config"
 export enum ConnectionType {
   WEBSOCKET = "Websocket",
   WEBRTC = "WebRTC (not implemented)",
-  LONG_POLLING = "Long polling (not implemented)",
+  LONG_POLLING = "Long polling",
   MQTT = "MQTT (not implemented)",
 }
 
