@@ -1,7 +1,8 @@
 import Phaser from "phaser"
 import { v4 as uuidv4 } from "uuid"
 import playerConfig from "./playerConfig"
-import { baseUrl, longPollingUrl } from "../config"
+import { baseUrl, longPollingUrl, webRTCUrl } from "../config"
+import geckos from "@geckos.io/client"
 
 export default class GameScene extends Phaser.Scene {
   private clientId: string
@@ -14,6 +15,7 @@ export default class GameScene extends Phaser.Scene {
   private ballVelocity: number
   private backendUrl: string
   private backendLongPollingUrl: string
+  private backendWebRTCUrl: string
   private players: any[]
   private posts: any[]
   //Phaser text elements which are rendered
@@ -32,6 +34,7 @@ export default class GameScene extends Phaser.Scene {
   private protocolRefreshTimer: Phaser.Time.TimerEvent
   private subscribedToLongPoll = true
   private firstUpdate = true
+  private wrtcChannel: any
 
   constructor() {
     super("hello-world")
@@ -52,6 +55,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.backendUrl = baseUrl
     this.backendLongPollingUrl = longPollingUrl
+    this.backendWebRTCUrl = webRTCUrl
     this.players = []
     this.posts = []
     this.scores = []
@@ -68,6 +72,12 @@ export default class GameScene extends Phaser.Scene {
     this.recordPing = false
     this.recordPingStart = new Date()
     this.connectionType = "WEBSOCKET"
+    const wrtcChannel = geckos({ port: import.meta.env.PUBLIC_RTC_PORT })
+    wrtcChannel.onConnect(() => {
+      wrtcChannel.on("chat message", (data: Data) => {
+        console.log("WEBRTC connected")
+      })
+    })
   }
 
   create() {
@@ -155,6 +165,22 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update() {
+    if (this.connectionType === "WEB_RTC") {
+      if (
+        this.playerKeys.space.isDown &&
+        !this.controlledPlayer &&
+        !this.joining
+      ) {
+        //this.joinWebRTC()
+        this.joining = true
+      }
+      if (this.playerKeys.enter.isDown) {
+        if (!this.gameRunning) {
+          //this.startGameWebRTC()
+        }
+      }
+    }
+
     if (this.connectionType === "LONG_POLLING") {
       if (
         this.playerKeys.space.isDown &&
@@ -278,6 +304,11 @@ export default class GameScene extends Phaser.Scene {
     if (this.subscribedToLongPoll && this.connectionType === "LONG_POLLING") {
       this.pollServer()
     }
+
+    /*Not sure if neccesary
+    if (this.subscribedToWebRTC && this.connectionType === "WEB_RTC") {
+      //TODO
+    }*/
   }
 
   join() {
@@ -393,8 +424,9 @@ export default class GameScene extends Phaser.Scene {
           "Content-Type": "application/json",
         },
       })
-
       const data = await res.json()
+    } else if (this.connectionType === "WEB_RTC") {
+      this.wrtcChannel.emit("updateBall", JSON.stringify(body))
     }
   }
 
@@ -453,6 +485,10 @@ export default class GameScene extends Phaser.Scene {
 
         const data = await res.json()
       }
+    } else if (this.connectionType === "WEB_RTC") {
+      //TODO
+      //updatePlayer
+      this.wrtcChannel.emit("updatePlayer", JSON.stringify(body))
     }
   }
 
@@ -611,6 +647,8 @@ export default class GameScene extends Phaser.Scene {
 
       const data = await res.json()
       console.log(data)
+    } else if (this.connectionType === "WEB_RTC") {
+      this.wrtcChannel.emit("updatePlayer", JSON.stringify(body))
     }
   }
 
@@ -716,4 +754,6 @@ export default class GameScene extends Phaser.Scene {
       await this.pollServer()
     }
   }
+
+  //WEBRTC FUNCTIONS BELOW
 }

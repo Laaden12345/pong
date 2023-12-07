@@ -5,3 +5,7 @@ export const baseUrl = `http://${import.meta.env.PUBLIC_BACKEND_URL}:${
 export const longPollingUrl = `http://${import.meta.env.PUBLIC_BACKEND_URL}:${
   import.meta.env.PUBLIC_LP_BACKEND_PORT
 }`
+
+export const webRTCUrl = `http://${import.meta.env.PUBLIC_BACKEND_URL}:${
+  import.meta.env.PUBLIC_RTC_PORT
+}`
