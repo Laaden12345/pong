@@ -6,5 +6,6 @@
     "outDir": "./build",
     "esModuleInterop": true,
     "useUnknownInCatchVariables": false,
+    "skipLibCheck": true
   }
 }

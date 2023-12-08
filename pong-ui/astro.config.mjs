@@ -7,5 +7,5 @@ dotenv.config({ path: "./.env" })
 // https://astro.build/config
 export default defineConfig({
   integrations: [react()],
-  server: { port: parseInt(process.env.FRONTEND_PORT), host: true },
+  server: { port: parseInt(process.env.FRONTEND_PORT) || 3000, host: true },
 })
