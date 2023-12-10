@@ -371,7 +371,12 @@ export default class GameScene extends Phaser.Scene {
       ) {
         console.log(i)
         player.destroy(true)
-        this.controlledPlayer = null
+        if (
+          this.controlledPlayer !== null &&
+          this.controlledPlayer.id === player.id
+        ) {
+          this.controlledPlayer = null
+        }
         this.players[i] = this.getWall(i as keyof typeof playerConfig)
         this.scoreNumbers[i] = -999
         this.physics.world.enable(this.players[i])
@@ -594,7 +599,6 @@ export default class GameScene extends Phaser.Scene {
     solidWall.body!.collideWorldBounds = true
     solidWall.body!.immovable = true
     solidWall.name = "solidWall"
-    this.controlledPlayer = null
 
     this.players[playerNo].destroy(true)
     this.players[playerNo] = solidWall
