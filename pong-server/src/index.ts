@@ -17,7 +17,7 @@ app.use(express.json())
 app.use("/", router)
 
 app.listen(port, "0.0.0.0", () => {
-  console.log(`Example app listening on port ${port}`)
+  console.log(`Server listening on port ${port}`)
 })
 
 const lpApp = express()
@@ -27,7 +27,7 @@ lpApp.use(express.json())
 lpApp.use("/", lpRouter)
 
 lpApp.listen(lpPort, "0.0.0.0", () => {
-  console.log(`Example app listening on port ${lpPort}`)
+  console.log(`Long polling server listening on port ${lpPort}`)
 })
 
 var longpoll = require("express-longpoll")(lpApp)

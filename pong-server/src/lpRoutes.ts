@@ -5,8 +5,10 @@ import {
   updateBall,
   updatePlayer,
   removePlayer,
+  checkIdlePlayers,
 } from "./game-management"
 import { PlayerState, BallState, state } from "./state"
+import { connectionType } from "./routes"
 
 const router = Router()
 
@@ -35,15 +37,9 @@ router.post("/updateGameState", async (req, res) => {
     updateBall(undefined)
   }
 
-  /* state.players.forEach((player) => {
-    if (
-      player.lastPingUpdate &&
-      new Date().getTime() - player.lastPingUpdate > 5000
-    ) {
-      console.log(`Removing player ${player.id} due to timeout`)
-      removePlayer(player.id)
-    }
-  }) */
+  if (connectionType === "LONGPOLLING") {
+    checkIdlePlayers()
+  }
 
   res.json({
     event: "updateGameState",

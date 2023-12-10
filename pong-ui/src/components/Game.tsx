@@ -23,9 +23,7 @@ interface PingData {
 
 const Game = () => {
   const [phaser, setPhaser] = useState<Phaser.Game>()
-  const [activeCommunicationType, setActiveCommunicationType] =
-    useState<ConnectionType>("WEBSOCKET" as ConnectionType)
-  const [newCommunicationType, setNewCommunicationType] =
+  const [activeConnectionType, setActiveConnectionType] =
     useState<ConnectionType>("WEBSOCKET" as ConnectionType)
   const [pings, setPings] = useState<PingData[]>([])
 
@@ -59,25 +57,6 @@ const Game = () => {
   }, [])
 
   useEffect(() => {
-    const setConnection = async (type: ConnectionType) => {
-      const body = JSON.stringify({ connectionType: type })
-
-      const response = await window.fetch(`${baseUrl}/connection-type`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body,
-      })
-
-      const data = await response.json()
-
-      setActiveCommunicationType(data["connectionType"] as ConnectionType)
-    }
-    setConnection(newCommunicationType)
-  }, [newCommunicationType])
-
-  useEffect(() => {
     const intervalId = setInterval(async () => {
       try {
         const response = await window.fetch(`${baseUrl}/pings`)
@@ -89,6 +68,31 @@ const Game = () => {
     }, 1000)
     return () => clearInterval(intervalId)
   }, [useState])
+
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      try {
+        const response = await window.fetch(`${baseUrl}/connection-type`)
+        const data = await response.json()
+        setActiveConnectionType(data.connectionType)
+      } catch (e) {
+        console.error(e)
+      }
+    }, 500)
+    return () => clearInterval(intervalId)
+  }, [useState])
+
+  const handleConnectionTypeChange = async (type: ConnectionType) => {
+    const body = JSON.stringify({ connectionType: type })
+
+    await window.fetch(`${baseUrl}/connection-type`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body,
+    })
+  }
 
   const handleDelete = async (id: string) => {
     await window.fetch(`${baseUrl}/pings/${id}`, {
@@ -108,12 +112,12 @@ const Game = () => {
       }}
     >
       <div>
-        <div>Active communication type: {activeCommunicationType}</div>
+        <div>Active connection type: {activeConnectionType}</div>
         {Object.keys(ConnectionType).map((key) => (
           <button
             key={key}
             value={key}
-            onClick={() => setNewCommunicationType(key as ConnectionType)}
+            onClick={() => handleConnectionTypeChange(key as ConnectionType)}
           >
             {ConnectionType[key as keyof typeof ConnectionType]}
           </button>

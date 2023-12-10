@@ -32,6 +32,7 @@ export default class GameScene extends Phaser.Scene {
   private protocolRefreshTimer: Phaser.Time.TimerEvent
   private subscribedToLongPoll = true
   private firstUpdate = true
+  private pingRecordingText: any
 
   constructor() {
     super("hello-world")
@@ -102,6 +103,8 @@ export default class GameScene extends Phaser.Scene {
     this.players[1] = this.getWall(1)
     this.players[2] = this.getWall(2)
     this.players[3] = this.getWall(3)
+
+    this.pingRecordingText = null
 
     for (let i = 0; i < this.posts.length; i++) {
       this.physics.world.enable(this.posts[i])
@@ -247,7 +250,7 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    if (this.controlledPlayer) {
+    if (this.controlledPlayer !== null) {
       if (this.scoreNumbers[this.playerNo] > 0) {
         this.movePaddle()
       }
@@ -274,6 +277,26 @@ export default class GameScene extends Phaser.Scene {
 
     this.updateScores()
     this.updateScorePosition()
+
+    if (this.recordPing && this.pingRecordingText === null) {
+      this.pingRecordingText = this.add.text(
+        this.WIDTH / 2,
+        this.HEIGHT / 2,
+        "Recording pings",
+        {
+          font: "16px Arial",
+          color: "#ffffff",
+        }
+      )
+      this.pingRecordingText.setPosition(
+        this.WIDTH / 2 - this.pingRecordingText.width / 2,
+        this.HEIGHT / 2 - 30
+      )
+      console.log(this.pingRecordingText)
+    } else if (!this.recordPing && this.pingRecordingText !== null) {
+      this.pingRecordingText.destroy()
+      this.pingRecordingText = null
+    }
 
     if (this.subscribedToLongPoll && this.connectionType === "LONG_POLLING") {
       this.pollServer()
@@ -321,12 +344,6 @@ export default class GameScene extends Phaser.Scene {
     this.joining = false
   }
 
-  checkActivePlayer() {
-    if (this.controlledPlayer) {
-      return
-    }
-  }
-
   async getConnectionType() {
     const response = await fetch(`${this.backendUrl}/connection-type`)
     const json = await response.json()
@@ -354,6 +371,7 @@ export default class GameScene extends Phaser.Scene {
       ) {
         console.log(i)
         player.destroy(true)
+        this.controlledPlayer = null
         this.players[i] = this.getWall(i as keyof typeof playerConfig)
         this.scoreNumbers[i] = -999
         this.physics.world.enable(this.players[i])
@@ -569,8 +587,6 @@ export default class GameScene extends Phaser.Scene {
   }
 
   replacePlayerWithWall = async (playerNo: keyof typeof playerConfig) => {
-    const config = playerConfig[playerNo]
-
     const solidWall: any = this.getWall(playerNo)
     solidWall.id = this.players[playerNo].id
 
@@ -578,6 +594,7 @@ export default class GameScene extends Phaser.Scene {
     solidWall.body!.collideWorldBounds = true
     solidWall.body!.immovable = true
     solidWall.name = "solidWall"
+    this.controlledPlayer = null
 
     this.players[playerNo].destroy(true)
     this.players[playerNo] = solidWall

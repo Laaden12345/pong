@@ -4,7 +4,7 @@ import * as fs from "node:fs"
 
 const router = Router()
 
-let connectionType = "WEBSOCKET"
+export let connectionType = "WEBSOCKET"
 
 router.get("/connection-type", (req, res) => {
   res.json({ connectionType })
