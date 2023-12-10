@@ -39,6 +39,18 @@ export const updatePlayer = (player: PlayerState) => {
   state.players[index] = player
 }
 
+export const checkIdlePlayers = () => {
+  state.players.forEach((player) => {
+    if (
+      player.lastPingUpdate &&
+      new Date().getTime() - player.lastPingUpdate > 5000
+    ) {
+      console.log(`Removing player ${player.id} due to timeout`)
+      removePlayer(player.id)
+    }
+  })
+}
+
 export const removePlayer = (clientId: string) => {
   const index = state.players.findIndex((p) => p.id === clientId)
   if (index === -1) {

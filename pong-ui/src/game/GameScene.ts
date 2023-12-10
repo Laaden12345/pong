@@ -1,7 +1,7 @@
 import Phaser from "phaser"
 import { v4 as uuidv4 } from "uuid"
 import playerConfig from "./playerConfig"
-import { baseUrl } from "../config"
+import { baseUrl, longPollingUrl } from "../config"
 
 export default class GameScene extends Phaser.Scene {
   private clientId: string
@@ -13,6 +13,7 @@ export default class GameScene extends Phaser.Scene {
   private velocity: number
   private ballVelocity: number
   private backendUrl: string
+  private backendLongPollingUrl: string
   private players: any[]
   private posts: any[]
   //Phaser text elements which are rendered
@@ -29,6 +30,9 @@ export default class GameScene extends Phaser.Scene {
   private playerNo: number
   private connectionType: string
   private protocolRefreshTimer: Phaser.Time.TimerEvent
+  private subscribedToLongPoll = true
+  private firstUpdate = true
+  private pingRecordingText: any
 
   constructor() {
     super("hello-world")
@@ -48,6 +52,7 @@ export default class GameScene extends Phaser.Scene {
     this.ballVelocity = 400
 
     this.backendUrl = baseUrl
+    this.backendLongPollingUrl = longPollingUrl
     this.players = []
     this.posts = []
     this.scores = []
@@ -98,6 +103,8 @@ export default class GameScene extends Phaser.Scene {
     this.players[1] = this.getWall(1)
     this.players[2] = this.getWall(2)
     this.players[3] = this.getWall(3)
+
+    this.pingRecordingText = null
 
     for (let i = 0; i < this.posts.length; i++) {
       this.physics.world.enable(this.posts[i])
@@ -151,78 +158,99 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update() {
-    if (
-      this.playerKeys.space.isDown &&
-      !this.controlledPlayer &&
-      !this.joining
-    ) {
-      this.join()
-      this.joining = true
+    if (this.connectionType === "LONG_POLLING") {
+      if (
+        this.playerKeys.space.isDown &&
+        !this.controlledPlayer &&
+        !this.joining
+      ) {
+        this.joinLongPolling()
+        this.joining = true
+      }
+      if (this.playerKeys.enter.isDown) {
+        if (!this.gameRunning) {
+          this.startGameLongPolling()
+        }
+      }
     }
-    if (this.playerKeys.enter.isDown) {
-      if (!this.gameRunning) {
+
+    if (this.connectionType === "WEBSOCKET") {
+      if (
+        this.playerKeys.space.isDown &&
+        !this.controlledPlayer &&
+        !this.joining
+      ) {
+        this.join()
+        this.joining = true
+      }
+      if (this.playerKeys.enter.isDown) {
+        if (!this.gameRunning) {
+          this.socket.send(
+            JSON.stringify({
+              event: "startGame",
+            })
+          )
+        }
+      }
+
+      if (this.socket.readyState === WebSocket.OPEN) {
         this.socket.send(
           JSON.stringify({
-            event: "startGame",
+            event: "getGameState",
           })
         )
       }
-    }
+      this.socket.onmessage = (event) => {
+        const data = JSON.parse(event.data)
 
-    if (this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(
-        JSON.stringify({
-          event: "getGameState",
-        })
-      )
-    }
-    this.socket.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-
-      if (data.event === "playerJoined" && data.payload.id === this.clientId) {
-        this.addPlayer(data.payload, true)
-      }
-      if (data.event === "gameStarted") {
-        console.log("starting game")
-        this.gameRunning = true
-      }
-      if (data.event === "gameOver") {
-        console.log("game over")
-        this.gameRunning = false
-      }
-      if (data.event === "gameState") {
-        const ball = data.payload.ball
-        this.scoreNumbers = data.payload.scores
-        for (let i = 0; i < 4; i++) {
-          if (
-            this.scoreNumbers[i] <= 0 &&
-            this.players[i].name !== "solidwall"
-          ) {
-            console.log("here")
-            this.replacePlayerWithWall(i as keyof typeof playerConfig)
-          }
-        }
-        if (!this.gameRunning) {
-          this.ball.body!.reset(ball.location.x, ball.location.y)
-        }
         if (
-          this.ball.body.velocity.x === 0 &&
-          this.ball.body.velocity.y === 0
+          data.event === "playerJoined" &&
+          data.payload.id === this.clientId
         ) {
-          this.ballVelocity = 400
-          this.ball.body.velocity.x = ball.velocity.x
-          this.ball.body.velocity.y = ball.velocity.y
-        } else {
-          this.updateBall()
-          //this.checkForLostPlayers()
+          this.addPlayer(data.payload, true)
         }
-        this.updatePlayers(data.payload.players)
-        if (this.gameRunning && !data.payload.gameRunning) {
+        if (data.event === "gameStarted") {
+          console.log("starting game")
+          this.gameRunning = true
+        }
+        if (data.event === "gameOver") {
+          console.log("game over")
           this.gameRunning = false
         }
+        if (data.event === "gameState") {
+          const ball = data.payload.ball
+          this.scoreNumbers = data.payload.scores
+          for (let i = 0; i < 4; i++) {
+            if (
+              this.scoreNumbers[i] <= 0 &&
+              this.players[i].name !== "solidwall"
+            ) {
+              this.replacePlayerWithWall(i as keyof typeof playerConfig)
+            }
+          }
+          if (!this.gameRunning) {
+            this.ball.body!.reset(ball.location.x, ball.location.y)
+          }
+          if (
+            this.ball.body.velocity.x === 0 &&
+            this.ball.body.velocity.y === 0
+          ) {
+            this.ballVelocity = 400
+            this.ball.body.velocity.x = ball.velocity.x
+            this.ball.body.velocity.y = ball.velocity.y
+          } else {
+            this.updateBall()
+            //this.checkForLostPlayers()
+          }
+          this.updatePlayers(data.payload.players)
+          if (this.gameRunning && !data.payload.gameRunning) {
+            this.gameRunning = false
+          }
+        }
       }
     }
-    if (this.controlledPlayer) {
+
+    if (this.controlledPlayer !== null) {
       if (this.scoreNumbers[this.playerNo] > 0) {
         this.movePaddle()
       }
@@ -249,6 +277,30 @@ export default class GameScene extends Phaser.Scene {
 
     this.updateScores()
     this.updateScorePosition()
+
+    if (this.recordPing && this.pingRecordingText === null) {
+      this.pingRecordingText = this.add.text(
+        this.WIDTH / 2,
+        this.HEIGHT / 2,
+        "Recording pings",
+        {
+          font: "16px Arial",
+          color: "#ffffff",
+        }
+      )
+      this.pingRecordingText.setPosition(
+        this.WIDTH / 2 - this.pingRecordingText.width / 2,
+        this.HEIGHT / 2 - 30
+      )
+      console.log(this.pingRecordingText)
+    } else if (!this.recordPing && this.pingRecordingText !== null) {
+      this.pingRecordingText.destroy()
+      this.pingRecordingText = null
+    }
+
+    if (this.subscribedToLongPoll && this.connectionType === "LONG_POLLING") {
+      this.pollServer()
+    }
   }
 
   join() {
@@ -292,12 +344,6 @@ export default class GameScene extends Phaser.Scene {
     this.joining = false
   }
 
-  checkActivePlayer() {
-    if (this.controlledPlayer) {
-      return
-    }
-  }
-
   async getConnectionType() {
     const response = await fetch(`${this.backendUrl}/connection-type`)
     const json = await response.json()
@@ -325,6 +371,12 @@ export default class GameScene extends Phaser.Scene {
       ) {
         console.log(i)
         player.destroy(true)
+        if (
+          this.controlledPlayer !== null &&
+          this.controlledPlayer.id === player.id
+        ) {
+          this.controlledPlayer = null
+        }
         this.players[i] = this.getWall(i as keyof typeof playerConfig)
         this.scoreNumbers[i] = -999
         this.physics.world.enable(this.players[i])
@@ -336,26 +388,40 @@ export default class GameScene extends Phaser.Scene {
     })
   }
 
-  updateBall() {
-    this.socket.send(
-      JSON.stringify({
-        event: "updateBall",
-        payload: {
-          id: this.clientId,
-          location: {
-            x: this.ball.body.position.x,
-            y: this.ball.body.position.y,
-          },
-          velocity: {
-            x: this.ball.body.velocity.x,
-            y: this.ball.body.velocity.y,
-          },
+  updateBall = async () => {
+    const body = {
+      id: this.clientId,
+      location: {
+        x: this.ball.body.position.x,
+        y: this.ball.body.position.y,
+      },
+      velocity: {
+        x: this.ball.body.velocity.x,
+        y: this.ball.body.velocity.y,
+      },
+    }
+
+    if (this.connectionType === "WEBSOCKET") {
+      this.socket.send(
+        JSON.stringify({
+          event: "updateBall",
+          payload: body,
+        })
+      )
+    } else if (this.connectionType === "LONG_POLLING") {
+      const res = await fetch(`${this.backendLongPollingUrl}/updateBall`, {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: {
+          "Content-Type": "application/json",
         },
       })
-    )
+
+      const data = await res.json()
+    }
   }
 
-  movePaddle() {
+  movePaddle = async () => {
     const player = this.controlledPlayer
     const config = playerConfig[this.playerNo as keyof typeof playerConfig]
     if (config.direction === "x") {
@@ -376,20 +442,41 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    this.socket.send(
-      JSON.stringify({
-        event: "updatePlayer",
-        payload: {
-          id: this.clientId,
-          playerNo: this.playerNo,
-          lastPingUpdate: new Date().getTime(),
-          location: {
-            x: player.x,
-            y: player.y,
+    const body = {
+      id: this.clientId,
+      playerNo: this.playerNo,
+      lastPingUpdate: new Date().getTime(),
+      location: {
+        x: player.x,
+        y: player.y,
+      },
+    }
+
+    if (this.connectionType === "WEBSOCKET") {
+      this.socket.send(
+        JSON.stringify({
+          event: "updatePlayer",
+          payload: body,
+        })
+      )
+    } else if (this.connectionType === "LONG_POLLING") {
+      if (
+        this.firstUpdate ||
+        player.body.velocity.x !== 0 ||
+        player.body.velocity.y !== 0
+      ) {
+        this.firstUpdate = false
+        const res = await fetch(`${this.backendLongPollingUrl}/updatePlayer`, {
+          method: "POST",
+          body: JSON.stringify(body),
+          headers: {
+            "Content-Type": "application/json",
           },
-        },
-      })
-    )
+        })
+
+        const data = await res.json()
+      }
+    }
   }
 
   updateScorePosition() {
@@ -504,35 +591,48 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  replacePlayerWithWall(playerNo: keyof typeof playerConfig) {
-    const config = playerConfig[playerNo]
-
+  replacePlayerWithWall = async (playerNo: keyof typeof playerConfig) => {
     const solidWall: any = this.getWall(playerNo)
     solidWall.id = this.players[playerNo].id
 
     this.physics.world.enable(solidWall)
     solidWall.body!.collideWorldBounds = true
     solidWall.body!.immovable = true
-    solidWall.name = "solidwall"
+    solidWall.name = "solidWall"
 
     this.players[playerNo].destroy(true)
     this.players[playerNo] = solidWall
     this.physics.add.collider(this.ball, this.players[playerNo])
 
-    this.socket.send(
-      JSON.stringify({
-        event: "updatePlayer",
-        payload: {
-          id: this.clientId,
-          playerNo: this.playerNo,
-          lostGame: true,
-          location: {
-            x: solidWall.body.position.x,
-            y: solidWall.body.position.y,
-          },
+    const body = {
+      id: this.clientId,
+      playerNo: this.playerNo,
+      lostGame: true,
+      location: {
+        x: solidWall.body.position.x,
+        y: solidWall.body.position.y,
+      },
+    }
+
+    if (this.connectionType === "WEBSOCKET") {
+      this.socket.send(
+        JSON.stringify({
+          event: "updatePlayer",
+          payload: body,
+        })
+      )
+    } else if (this.connectionType === "LONG_POLLING") {
+      const res = await fetch(`${this.backendLongPollingUrl}/updatePlayer`, {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: {
+          "Content-Type": "application/json",
         },
       })
-    )
+
+      const data = await res.json()
+      console.log(data)
+    }
   }
 
   getWall(playerNo: keyof typeof playerConfig) {
@@ -552,6 +652,89 @@ export default class GameScene extends Phaser.Scene {
       const wall = this.add.sprite(this.WIDTH, 0, "wall")
       wall.displayHeight = this.HEIGHT
       return wall
+    }
+  }
+
+  //LONG POLLING FUNCTIONS BELOW
+  joinLongPolling = async () => {
+    const body = {
+      clientId: this.clientId,
+    }
+
+    const res = await fetch(`${this.backendLongPollingUrl}/join`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    const data = await res.json()
+
+    this.addPlayer(data.payload, true)
+  }
+
+  startGameLongPolling = async () => {
+    const res = await fetch(`${this.backendLongPollingUrl}/start`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    const data = await res.json()
+
+    this.gameRunning = true
+  }
+
+  updateGameLongPolling = async () => {
+    const res = await fetch(`${this.backendLongPollingUrl}/updateGameState`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    const data = await res.json()
+  }
+
+  pollServer = async () => {
+    this.subscribedToLongPoll = false
+    let response = await fetch(`${this.backendLongPollingUrl}/poll`)
+
+    if (response.status != 200) {
+      console.log("error")
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await this.pollServer()
+    } else {
+      let data = await response.json()
+
+      const ball = data.ball
+      this.scoreNumbers = data.scores
+
+      for (let i = 0; i < 4; i++) {
+        if (this.scoreNumbers[i] <= 0 && this.players[i].name !== "solidWall") {
+          this.replacePlayerWithWall(i as keyof typeof playerConfig)
+        }
+      }
+
+      if (!this.gameRunning) {
+        this.ball.body!.reset(ball.location.x, ball.location.y)
+      }
+      if (this.ball.body.velocity.x === 0 && this.ball.body.velocity.y === 0) {
+        this.ballVelocity = 400
+        this.ball.body.velocity.x = ball.velocity.x
+        this.ball.body.velocity.y = ball.velocity.y
+      } else {
+        this.updateBall()
+      }
+      this.updatePlayers(data.players)
+      if (this.gameRunning && !data.gameRunning) {
+        this.gameRunning = false
+      }
+
+      await this.updateGameLongPolling()
+      await this.pollServer()
     }
   }
 }
