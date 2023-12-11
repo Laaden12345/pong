@@ -37,7 +37,7 @@ router.post("/updateGameState", async (req, res) => {
     updateBall(undefined)
   }
 
-  if (connectionType === "LONGPOLLING") {
+  if (connectionType === "LONG_POLLING") {
     checkIdlePlayers()
   }
 

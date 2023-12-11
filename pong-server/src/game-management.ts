@@ -58,6 +58,8 @@ export const removePlayer = (clientId: string) => {
     return
   }
   state.players.splice(index, 1)
+  state.scores[index] = 10;
+  
   console.log(`Player ${clientId} removed`)
 }
 
