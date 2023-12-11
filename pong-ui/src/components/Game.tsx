@@ -3,9 +3,7 @@ import { baseUrl } from "../config"
 
 export enum ConnectionType {
   WEBSOCKET = "Websocket",
-  WEBRTC = "WebRTC (not implemented)",
   LONG_POLLING = "Long polling",
-  MQTT = "MQTT (not implemented)",
 }
 
 interface PingData {
@@ -15,7 +13,7 @@ interface PingData {
   duration: number
   average: number
   median: number
-  ninetynine: number
+  ninetyfifth: number
   min: number
   max: number
   pings: number[]
@@ -123,7 +121,7 @@ const Game = () => {
           </button>
         ))}
       </div>
-      <div id="phaser-container" style={{ marginTop: "2rem" }} />
+      <div id="phaser-container" style={{ marginTop: ".5rem" }} />
       <div>
         <h3>Ping data</h3>
         <table
@@ -155,7 +153,7 @@ const Game = () => {
                     <td>{result.duration} s</td>
                     <td>{result.average.toFixed(2)} ms</td>
                     <td>{result.median} ms</td>
-                    <td>{result.ninetynine} ms</td>
+                    <td>{result.ninetyfifth} ms</td>
                     <td>{result.min} ms</td>
                     <td>{result.max} ms</td>
                     <td>

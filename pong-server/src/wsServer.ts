@@ -2,13 +2,11 @@ import { RawData, WebSocket, WebSocketServer } from "ws"
 import {
   addPlayer,
   checkIdlePlayers,
-  removePlayer,
   updateBall,
   updatePlayer,
 } from "./game-management"
 import { PlayerState, BallState, state } from "./state"
 import { isJson } from "./utils"
-import { connectionType } from "./routes"
 
 export const handleMessage = async (
   ws: WebSocket,
@@ -18,7 +16,7 @@ export const handleMessage = async (
   if (isJson(message.toString())) {
     const json = JSON.parse(message.toString())
 
-    switch (JSON.parse(message.toString()).event) {
+    switch (json.event) {
       case "join": {
         try {
           console.log("adding player")
@@ -41,15 +39,18 @@ export const handleMessage = async (
         }
       }
       case "getGameState": {
-        if (
-          state.gameRunning &&
-          new Date().getTime() - state.ball.lastUpdate > (1 / 60) * 1000 // limit update frequency to 60Hz
-        ) {
+        if (state.gameRunning) {
           updateBall(undefined)
         }
-        if (connectionType === "WEBSOCKET") {
-          checkIdlePlayers()
+
+        const player = state.players.find((p) => p.id === json.payload.clientId)
+        if (player) {
+          player.lastPingUpdate = json.payload.pingDate
         }
+
+        // Remove players that haven't called for 5 seconds
+        checkIdlePlayers()
+
         wsServer.clients.forEach((client) => {
           client.send(
             JSON.stringify({

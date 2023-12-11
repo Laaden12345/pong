@@ -197,54 +197,62 @@ export default class GameScene extends Phaser.Scene {
         this.socket.send(
           JSON.stringify({
             event: "getGameState",
+            payload: {
+              playerId: this.clientId,
+              pingDate: new Date().getTime(),
+            },
           })
         )
       }
       this.socket.onmessage = (event) => {
         const data = JSON.parse(event.data)
 
-        if (
-          data.event === "playerJoined" &&
-          data.payload.id === this.clientId
-        ) {
-          this.addPlayer(data.payload, true)
-        }
-        if (data.event === "gameStarted") {
-          console.log("starting game")
-          this.gameRunning = true
-        }
-        if (data.event === "gameOver") {
-          console.log("game over")
-          this.gameRunning = false
-        }
-        if (data.event === "gameState") {
-          const ball = data.payload.ball
-          this.scoreNumbers = data.payload.scores
-          for (let i = 0; i < 4; i++) {
-            if (
-              this.scoreNumbers[i] <= 0 &&
-              this.players[i].name !== "solidwall"
-            ) {
-              this.replacePlayerWithWall(i as keyof typeof playerConfig)
+        switch (data.event) {
+          case "playerJoined": {
+            if (data.payload.id === this.clientId) {
+              this.addPlayer(data.payload, true)
             }
+            break
           }
-          if (!this.gameRunning) {
-            this.ball.body!.reset(ball.location.x, ball.location.y)
+          case "gameStarted": {
+            console.log("starting game")
+            this.gameRunning = true
+            break
           }
-          if (
-            this.ball.body.velocity.x === 0 &&
-            this.ball.body.velocity.y === 0
-          ) {
-            this.ballVelocity = 400
-            this.ball.body.velocity.x = ball.velocity.x
-            this.ball.body.velocity.y = ball.velocity.y
-          } else {
-            this.updateBall()
-            //this.checkForLostPlayers()
-          }
-          this.updatePlayers(data.payload.players)
-          if (this.gameRunning && !data.payload.gameRunning) {
+          case "gameOver": {
+            console.log("game over")
             this.gameRunning = false
+            break
+          }
+          case "gameState": {
+            const ball = data.payload.ball
+            this.scoreNumbers = data.payload.scores
+            for (let i = 0; i < 4; i++) {
+              if (
+                this.scoreNumbers[i] <= 0 &&
+                this.players[i].name !== "solidwall"
+              ) {
+                this.replacePlayerWithWall(i as keyof typeof playerConfig)
+              }
+            }
+            if (!this.gameRunning) {
+              this.ball.body!.reset(ball.location.x, ball.location.y)
+            }
+            if (
+              this.ball.body.velocity.x === 0 &&
+              this.ball.body.velocity.y === 0
+            ) {
+              this.ballVelocity = 400
+              this.ball.body.velocity.x = ball.velocity.x
+              this.ball.body.velocity.y = ball.velocity.y
+            } else {
+              this.updateBall()
+            }
+            this.updatePlayers(data.payload.players)
+            if (this.gameRunning && !data.payload.gameRunning) {
+              this.gameRunning = false
+            }
+            break
           }
         }
       }
@@ -466,15 +474,13 @@ export default class GameScene extends Phaser.Scene {
         player.body.velocity.y !== 0
       ) {
         this.firstUpdate = false
-        const res = await fetch(`${this.backendLongPollingUrl}/updatePlayer`, {
+        await fetch(`${this.backendLongPollingUrl}/updatePlayer`, {
           method: "POST",
           body: JSON.stringify(body),
           headers: {
             "Content-Type": "application/json",
           },
         })
-
-        const data = await res.json()
       }
     }
   }
@@ -689,6 +695,10 @@ export default class GameScene extends Phaser.Scene {
 
   updateGameLongPolling = async () => {
     const res = await fetch(`${this.backendLongPollingUrl}/updateGameState`, {
+      body: JSON.stringify({
+        clientId: this.clientId,
+        pingDate: new Date().getTime(),
+      }),
       method: "POST",
       headers: {
         "Content-Type": "application/json",
