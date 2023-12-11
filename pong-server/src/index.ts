@@ -4,8 +4,7 @@ import router from "./routes"
 import lpRouter from "./lpRoutes"
 import { handleMessage } from "./wsServer"
 import { WebSocketServer } from "ws"
-import { randomUUID } from "node:crypto"
-import { PlayerState, BallState, state } from "./state"
+import { state } from "./state"
 
 const app = express()
 app.use(cors())
@@ -36,10 +35,13 @@ var data = state
 
 longpoll.publish("/poll", data)
 
-// Publish every 5 seconds
-setInterval(function () {
-  longpoll.publish("/poll", data)
-}, 50)
+// Publish at rate of 60Hz
+setInterval(
+  function () {
+    longpoll.publish("/poll", data)
+  },
+  (1 / 60) * 1000
+)
 
 const wsServer = new WebSocketServer({ port: wsPort, clientTracking: true })
 

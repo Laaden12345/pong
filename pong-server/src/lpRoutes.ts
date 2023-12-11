@@ -1,10 +1,8 @@
 import { Router } from "express"
-const events = require("events")
 import {
   addPlayer,
   updateBall,
   updatePlayer,
-  removePlayer,
   checkIdlePlayers,
 } from "./game-management"
 import { PlayerState, BallState, state } from "./state"
@@ -30,11 +28,13 @@ router.post("/join", async (req, res) => {
 })
 
 router.post("/updateGameState", async (req, res) => {
-  if (
-    state.gameRunning &&
-    new Date().getTime() - state.ball.lastUpdate > (1 / 60) * 1000 // limit update frequency to 60Hz
-  ) {
+  if (state.gameRunning) {
     updateBall(undefined)
+  }
+
+  const player = state.players.find((p) => p.id === req.body.clientId)
+  if (player) {
+    player.lastPingUpdate = req.body.pingDate
   }
 
   if (connectionType === "LONG_POLLING") {

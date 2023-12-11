@@ -1,6 +1,7 @@
 import { Router } from "express"
 import { randomUUID } from "node:crypto"
 import * as fs from "node:fs"
+import percentile from "percentile"
 
 const router = Router()
 
@@ -37,7 +38,9 @@ router.post("/pings", (req, res) => {
   const pings = [...req.body.pings] as number[]
   const average = pings.reduce((a, b) => a + b, 0) / pings.length
   const median = pings.sort()[Math.floor(pings.length / 2)]
-  const ninetynine = pings[Math.floor(pings.length * 0.99)]
+  const ninetyfifth = percentile(95, pings)
+  console.log(ninetyfifth)
+
   const min = Math.min(...pings)
   const max = Math.max(...pings)
   const id = randomUUID()
@@ -48,7 +51,7 @@ router.post("/pings", (req, res) => {
     duration: req.body.duration,
     average,
     median,
-    ninetynine,
+    ninetyfifth,
     min,
     max,
     pings: req.body.pings,
