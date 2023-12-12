@@ -43,7 +43,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.load.image("wall", "https://i.imgur.com/WQUKFVC.png")
     this.load.image("wall2", "https://i.imgur.com/YD8kW9f.png")
-    this.load.image("ball", "https://i.imgur.com/xtFdsIU.png")
+    this.load.image("ball", "https://i.imgur.com/i0SRkIj.png")
     this.load.image("post", "https://i.imgur.com/9LJC7V8.png")
 
     this.clientId = uuidv4()
@@ -108,7 +108,7 @@ export default class GameScene extends Phaser.Scene {
 
     for (let i = 0; i < this.posts.length; i++) {
       this.physics.world.enable(this.posts[i])
-      this.posts[i].setScale(2)
+      this.posts[i].setScale(1.6)
       this.posts[i].body!.setBounce(1)
       this.posts[i].body!.immovable = true
       this.physics.add.collider(this.ball, this.posts[i])
